@@ -6,6 +6,60 @@
 \section{Dynamic Programming}
 \label{dp}
 
+The first contirbution of the thesis to the FSST algorithm of Figure~\ref{algorithm3} is replacing the $st.findLongestSymbol$ method with a DP function that gives "one" best symbol given the position in the text to encode (or training text in compressCount) with a single table lookup in $O(1)$ runtime. This table called $opt$ was constructed simultaneously with the DP table, serving as a solution recovery.
+\newline
+
+\noindent
+To understand the utility of the used DP function in the code, let's first define the more intuitive DP function for $0 \le i \le n$ (where $n$ is the text length) as: $dp[i] =$ smallest compressed size of the first $i$ bytes of the given text. So the result for the whole text is in $dp[n]$. The base case is $dp[0] = 0$ as the compression of an empty string is always an empty string.
+The recurrence is defined for each other value as: 
+\[
+dp[i] = \min(2 + dp[i-1], 1 + \min\limits_{\substack{0 \le j < i \\ s[j:i] \in symbols}} dp[j])
+\]
+where $s[j:i]$ denotes the substring of the text from position $j$ to $i-1$ (0-indexed). The formula simply chooses between either escaping the current byte or selecting one symbol that minimizes the dp value.
+In the first case, an overhead of two bytes must be added resulted in the escape byte followed by the raw byte from the string during encoding. In the second case, there is an added one byte for the code of the chosen symbol. Then all qualifying symbols are the ones that match a suffix of the first $i$ bytes, thus the constraints under the second $min$.
+
+The problem with this formula is that the qualifying symbols are ending at the position $i$ where building the $opt$ table requires knowing one best symbol beginning at a position $i$. So implementing this dp function will not help by filling the $opt$ table simultaneously, as we still need another dedicated function that also iterates over qualifying symbols again at each position, but this time the qualifying symbols are beginning at the current position and choosing one best symbol will depend on the DP values computed beforehand.
+\newline
+
+\noindent
+As a consequence, I used this DP function instead, defined for $0 \le i \le n$ as: $dp[i] =$ smallest compressed size of the last $n-i$ bytes the given text. This is equivalent to say that $dp[i]$ is the smallest compressed size of the suffix of the given text tsarting at position $i$ (0-indexed). So the result for the whole text is in $dp[0]$. The base case is $dp[n] = 0$ as the suffix from position $n$ is an empty string.
+The recurrence is defined for each other position as:
+\[
+dp[i] = \min(2 + dp[i+1], 1 + \min\limits_{\substack{i < j \le n \\ s[i:j] \in symbols}} dp[j]).
+\]
+The two options to choose from are the same as in the previous formula, but qualifying symbols to choose from must now begin at position $i$ as we are now calculating the results for suffixes instead of prefixes of the given text.
+\newline
+
+\noindent
+This DP problem is a segmentation problem where each segment is either a symbol, the escape code or a raw byte of the string that must follow the escape code. All segments have the same cost and we want to minimize the number of segments used to compress a given text. The first formula builds a bottom-up solution, while the second formula builds a top-down solution. Both should give the same result for the whole text as they are solving the same problem. The following code represents the python implementation of the DP function $st.buildDP$ that fills both the DP table and the $opt$ table in a single pass.
+
+\begin{figure}[htpb]
+  \centering
+  \begin{tabular}{c}
+  \begin{lstlisting}[language=Python]
+    n = len(data) # data is the given text to encode, or to use for compressCount
+    self.dp = [0] * (n+1)
+    self.opt = [0] * n
+    for i in reversed(range(n)):
+        self.opt[i] = data[i] 
+        self.dp[i] = self.dp[i+1] + 2 # Fallback value: escape the byte
+        start = self.sIndex[data[i]] # index of first symbol beginning with the byte at i
+        end = self.sIndex[data[i] + 1]
+        for code in range(start, end):
+            sym = self.symbols[code]
+            L = len(sym)
+            if i + L <= len(data) and self.dp[i] > 1 + self.dp[i + L] and data[i:i + L] == sym:
+                self.dp[i] = 1 + self.dp[i + L]
+                self.opt[i] = code
+  \end{lstlisting}
+  \end{tabular}
+  \caption{Python implementation of the DP function.}
+  \label{dp_python}
+\end{figure}
+
+As the code shows, the DP table is 
+
+
 \section{$3^{rd}$ Counter}
 
 \section{Symbol Pruning}

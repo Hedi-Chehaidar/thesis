@@ -25,10 +25,10 @@ Dynamic programming (DP) addresses optimization problems by systematically explo
 Unlike greedy algorithms, dynamic programming evaluates the long-term consequences of decisions. By considering multiple possible choices at each stage and selecting the one that minimizes or maximizes a well-defined cost function, DP can guarantee optimality when the problem satisfies optimal substructure and overlapping subproblems.
 
 We define the 0/1 Knapsack problem formally as follows: there are $n$ items where each item $i$ has value $v_i$ and weight $w_i$ and the knapsack capacity is $W$. We need to choose a subset of items that fits the capacity while maximizing the total value.
-Define the DP table: $DP[i][c] =$ maximum value achievable using the first $i$ items with capacity $c$. So the result is stored in $DP[n][W]$.
-The base cases are $DP[i][0] = 0$ for all $i$ and $DP[0][c] = 0$ for all $c$. The recurrence is defined for each item $i$ and capacity $c$ as follows:
-If $w_i > c$ (item does not fit): $DP[i][c] = DP[i - 1][c]$. 
-Otherwise choose best of taking or not taking the item: $DP[i][c] = max(DP[i - 1][c], DP[i - 1][c - w_i] + v_i)$.
+Define the DP table: $dp[i][c] =$ maximum value achievable using the first $i$ items with capacity $c$. So the result is stored in $dp[n][W]$.
+The base cases are $dp[i][0] = 0$ for all $i$ and $dp[0][c] = 0$ for all $c$. The recurrence is defined for each item $i$ and capacity $c$ as follows:
+If $w_i > c$ (item does not fit): $dp[i][c] = dp[i - 1][c]$. 
+Otherwise choose best of taking or not taking the item: $dp[i][c] = \max(dp[i - 1][c], dp[i - 1][c - w_i] + v_i)$.
 Time complexity is $O(nW)$.
 
 The primary trade-off of dynamic programming is computational complexity. DP solutions often require more time and memory than greedy alternatives, especially when the state space is large. As a result, practical DP implementations frequently rely on carefully designed cost models, state compression, or bounded problem sizes to remain efficient.
