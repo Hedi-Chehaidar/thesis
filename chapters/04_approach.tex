@@ -6,32 +6,40 @@
 \section{Dynamic Programming}
 \label{dp}
 
-The first contirbution of the thesis to the FSST algorithm of Figure~\ref{algorithm3} is replacing the $st.findLongestSymbol$ method with a DP function that gives "one" best symbol given the position in the text to encode (or training text in compressCount) with a single table lookup in $O(1)$ runtime. This table called $opt$ was constructed simultaneously with the DP table, serving as a solution recovery.
+The first contirbution of the thesis to the FSST algorithm of Figure~\ref{algorithm3} is replacing the $st.findLongestSymbol$ method with a DP function that gives "one" best symbol given the position in the text to encode (or training text in compressCount) with a single table lookup in $O(1)$ runtime. This table called $opt$ is constructed simultaneously with the DP table.
 \newline
 
 \noindent
-To understand the utility of the used DP function in the code, let's first define the more intuitive DP function for $0 \le i \le n$ (where $n$ is the text length) as: $dp[i] =$ smallest compressed size of the first $i$ bytes of the given text. So the result for the whole text is in $dp[n]$. The base case is $dp[0] = 0$ as the compression of an empty string is always an empty string.
+To understand the utility of the used DP function in the code, let's first define the more intuitive DP function for $0 \le i \le n$ (where $n$ is the text length) as: 
+\[
+  dp[i] = \text{smallest compressed size of the first $i$ bytes of the given text.}
+\]
+So the result for the whole text is in $dp[n]$. The base case is $dp[0] = 0$ as the compression of an empty string is always an empty string.
 The recurrence is defined for each other value as: 
 \[
 dp[i] = \min(2 + dp[i-1], 1 + \min\limits_{\substack{0 \le j < i \\ s[j:i] \in symbols}} dp[j])
 \]
-where $s[j:i]$ denotes the substring of the text from position $j$ to $i-1$ (0-indexed). The formula simply chooses between either escaping the current byte or selecting one symbol that minimizes the dp value.
-In the first case, an overhead of two bytes must be added resulted in the escape byte followed by the raw byte from the string during encoding. In the second case, there is an added one byte for the code of the chosen symbol. Then all qualifying symbols are the ones that match a suffix of the first $i$ bytes, thus the constraints under the second $min$.
+where $s[j:i]$ denotes the substring of the text from position $j$ to $i-1$ (0-indexed). The formula simply chooses between either escaping the current byte or selecting one symbol that minimizes the DP value.
+In the first case, an overhead of two bytes must be added resulted in the escape byte followed by the raw byte from the string during encoding. In the second case, there is an added one byte for the code of the chosen symbol. Then all candidate symbols are the ones that match a suffix of the first $i$ bytes, thus the constraints under the second $min$.
 
-The problem with this formula is that the qualifying symbols are ending at the position $i$ where building the $opt$ table requires knowing one best symbol beginning at a position $i$. So implementing this dp function will not help by filling the $opt$ table simultaneously, as we still need another dedicated function that also iterates over qualifying symbols again at each position, but this time the qualifying symbols are beginning at the current position and choosing one best symbol will depend on the DP values computed beforehand.
+The problem with this formula is that the candidate symbols are ending at the position $i$, while building the $opt$ table requires knowing one best symbol beginning at a position $i$. So implementing this DP function will not help by filling the $opt$ table simultaneously, as we still need another dedicated function that also iterates over candidate symbols again at each position, but this time the candidate symbols are beginning at the current position and choosing one best symbol will depend on the DP values computed beforehand.
 \newline
 
 \noindent
-As a consequence, I used this DP function instead, defined for $0 \le i \le n$ as: $dp[i] =$ smallest compressed size of the last $n-i$ bytes the given text. This is equivalent to say that $dp[i]$ is the smallest compressed size of the suffix of the given text tsarting at position $i$ (0-indexed). So the result for the whole text is in $dp[0]$. The base case is $dp[n] = 0$ as the suffix from position $n$ is an empty string.
+As a consequence, the following DP function is used instead, defined for $0 \le i \le n$ as: 
+\[
+  dp[i] = \text{smallest compressed size of the last $n-i$ bytes of the given text.}
+\]
+This is equivalent to say that $dp[i]$ is the smallest compressed size of the suffix of the given text starting at position $i$ (0-indexed). So the result for the whole text is in $dp[0]$. The base case is $dp[n] = 0$ as the suffix from position $n$ is an empty string.
 The recurrence is defined for each other position as:
 \[
 dp[i] = \min(2 + dp[i+1], 1 + \min\limits_{\substack{i < j \le n \\ s[i:j] \in symbols}} dp[j]).
 \]
-The two options to choose from are the same as in the previous formula, but qualifying symbols to choose from must now begin at position $i$ as we are now calculating the results for suffixes instead of prefixes of the given text.
+The two options to choose from are the same as in the previous formula, but candidate symbols to choose from must now begin at position $i$ as we are now calculating the results for suffixes instead of prefixes of the given text.
 \newline
 
 \noindent
-This DP problem is a segmentation problem where each segment is either a symbol, the escape code or a raw byte of the string that must follow the escape code. All segments have the same cost and we want to minimize the number of segments used to compress a given text. The first formula builds a bottom-up solution, while the second formula builds a top-down solution. Both should give the same result for the whole text as they are solving the same problem. The following code represents the python implementation of the DP function $st.buildDP$ that fills both the DP table and the $opt$ table in a single pass.
+This DP problem is a segmentation problem, where each segment is either a symbol, the escape code or a raw byte of the string that must follow the escape code. All segments have the same cost and we want to minimize the number of segments used to compress a given text. The first formula builds a bottom-up solution, while the second formula builds a top-down solution. Both should give the same result for the whole text as they are solving the same problem. The code in Figure~\ref{dp_python} represents the python implementation of the DP function $st.buildDP$ that fills both the DP and the $opt$ tables in a single pass.
 
 \begin{figure}[htpb]
   \centering
@@ -42,13 +50,18 @@ This DP problem is a segmentation problem where each segment is either a symbol,
     self.opt = [0] * n
     for i in reversed(range(n)):
         self.opt[i] = data[i] 
-        self.dp[i] = self.dp[i+1] + 2 # Fallback value: escape the byte
-        start = self.sIndex[data[i]] # index of first symbol beginning with the byte at i
+        self.dp[i] = self.dp[i+1] + 2 
+        # start is the index of first symbol beginning with the byte at i
+        start = self.sIndex[data[i]] 
         end = self.sIndex[data[i] + 1]
         for code in range(start, end):
             sym = self.symbols[code]
             L = len(sym)
-            if i + L <= len(data) and self.dp[i] > 1 + self.dp[i + L] and data[i:i + L] == sym:
+            if (
+                i + L <= len(data) 
+                and self.dp[i] > 1 + self.dp[i + L] 
+                and data[i:i + L] == sym
+            ):
                 self.dp[i] = 1 + self.dp[i + L]
                 self.opt[i] = code
   \end{lstlisting}
@@ -57,8 +70,63 @@ This DP problem is a segmentation problem where each segment is either a symbol,
   \label{dp_python}
 \end{figure}
 
-As the code shows, the DP table is 
+As the code shows, the DP table is filled from $n$ to 0 in descending order, where for each position other than $n$ the DP value is initialized with the corresponding value for the option of escaping the current byte. Then the inner loop iterates over the candidate symbols that begin with the current byte and match the next chunk of the text $data$.
+This code uses the $st.sIndex$ table, whose construction was shown in Figure~\ref{algorithm3}. So the iteration over the symbols is in decreasing order of their lengths. As a tie-breaker between symbols that yield the same DP value, this implementation chooses a symbol with the highest length (i.e. occurs first in the iteration), thus the use of '<' instead of '$\le$' in the if statement for updating the DP and $opt$ tables. There is an exception to this case, when choosing to escape the byte also yields the smallest DP value, then no symbol will be chosen.
 
+This approach requires performing a memory comparision of at most 8 bytes for every symbol that begins with a certain byte. To avoid that, a trie is used in the C++ implementation of the constributions \cite{btrfsst_repo} to store the symbols in addition to the $hashTab$ and $shortCodes$ arrays. The trie is implemented as a vector of $TriNodes$, whose structure is shown in Figure~\ref{TrieNode}.
+
+\begin{figure}[htpb]
+  \centering
+  \begin{tabular}{c}
+  \begin{lstlisting}[language=C++]
+    struct TrieNode {
+      int symbolCode;      // code of a symbol ending here, -1 if none
+      int child[256];      // child indices, -1 if absent
+      TrieNode() : symbolCode(-1) {
+         for (int i=0;i<256;i++) child[i] = -1;
+      }
+    };
+  \end{lstlisting}
+  \end{tabular}
+  \caption{TrieNode structure}
+  \label{TrieNode}
+\end{figure}
+
+Each node stores the code of the symbol ending at that node and the indices for the children nodes, where the maximum number of children is 256 (an edge for every possible byte). The maximum number of nodes in the trie is $(8 * 255 + 1)$, as all symbols are disjoint in the worst case and there are 255 actual symbols at most, with an additional node for the root. This makes the trie memory overhead around $2 MB$ in the extreme case.
+
+Now finding candidate symbols can be done efficiently by traversing the trie and comparing one byte at each iteration instead of a whole symbol, with the possibility to break from the inner loop when there are no symbols beginning with a certain prefix. The inner loop of the current implementation is shown in Figure~\ref{dp_cpp}.
+
+\begin{figure}[htpb]
+  \centering
+  \begin{tabular}{c}
+  \begin{lstlisting}[language=C++]
+    // walk trie for real symbols (1..8 bytes)
+    int node = 0;
+    int limit = (int) min<size_t>(Symbol::maxLength, n - (size_t)i);
+    for (int off=0; off<limit; ++off) {
+        u8 bb = data[i + off];
+        node = trie[node].child[bb];
+        if (node == -1) break;
+        int code = trie[node].symbolCode;
+        if (code != -1) {
+          u32 L = (u32)(off + 1);
+          u32 cost = 1u + dpCost[i + (int)L]; // real symbol always emits 1 byte
+          if (cost <= bestCost) {
+              bestCost = cost;
+              bestCode = (u16) code;
+          }
+        }
+
+    }
+  \end{lstlisting}
+  \end{tabular}
+  \caption{Trie traversal in st.buildDP}
+  \label{dp_cpp}
+\end{figure}
+
+A similar traversal is used for adding each symbol into the trie, where instead of breaking when $node == -1$, a new node is created and the child entry is updated accordingly. Here, breaking is faster in practice than continuing the 8 full iterations without branching, as in the most cases no symbols will be found after the second or third iteration, due to the high number of symbols of lengths two and three in the symbol table. 
+
+After building the DP and $opt$ tables, choosing the next symbol in $compressCount$ or in the compression method can be done by a simple lookup in the $opt$ table. The implementation wraps this operation in a function called $findBestSymbol$. Results of this DP approach on the compression factor (CF) will be discussed in Section~\ref{dp_results}.  
 
 \section{$3^{rd}$ Counter}
 
