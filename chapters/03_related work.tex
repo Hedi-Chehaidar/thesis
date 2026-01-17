@@ -3,16 +3,16 @@
 
 \chapter{Related Work}\label{chapter:related work}
 
-\section{Block-based Compressors}
+\section{Block-Based Compressors}
 General-purpose block-based compression algorithms are widely used across storage systems, operating systems, and data processing pipelines due to their ability to achieve high compression ratios on diverse data types. These compressors operate by partitioning the input data into blocks of fixed or variable size and compressing each block independently. This design enables parallel compression and decompression, robust error containment, and adaptability to different data distributions.
 
 \subsection{LZ4}
-One of the most prominent examples of such algorithms is LZ4, a lightweight compressor based on the Lempel–Ziv 77 (LZ77) family of dictionary compression techniques.
-The LZ77 general technique works by scanning a block with a usual size of 128 KB as input, detecting byte sequences that appeared before. Repeated sequences are encoded as a pair $(offset, length)$ where $offset$ references the first appearance of the sequence in the output stream.
+One of the most prominent examples of such algorithms is LZ4, a lightweight compressor based on the Lempel-Ziv 77 (LZ77) family of dictionary compression techniques.
+The LZ77 general technique works by scanning a block with a usual size of 128 KB as input, detecting byte sequences that appeared before. Repeated sequences are encoded as a pair (\texttt{offset}, \texttt{length}) where \texttt{offset} references the first appearance of the sequence in the output stream.
 
 What distinguishes LZ4 is that during compression a hash table is used to quickly identify matches in the input and greedily accepting the first match found. This approach minimizes CPU usage, providing compression speed > 500 MB/s per core.
 
-LZ4 decompression is very similar to just performing memory copy ('memcpy') operations, making it bounded by memory bandwith with speed of multiple GB/s per core, tipically reaching RAM speed limits on multi-core systems.
+LZ4 decompression is very similar to just performing memory copy ('memcpy') operations, making it bounded by memory bandwith with speed of multiple GB/s per core, typically reaching RAM speed limits on multi-core systems.
  
 LZ4 prioritizes decompression speed over compression ratio, making it suitable for performance-critical workloads where fast data access is required. It achieves compression by identifying repeated byte sequences within a block and encoding them as references to earlier occurrences \cite{lz4}.
 
@@ -23,6 +23,8 @@ Zstandard (Zstd) \cite{zstd} represents a more advanced block-based compression 
 Zstd encodes unmatched byte sequences, called literal bytes, in addition to the offset and length attributes of match pairs using Finite State Entropy (FSE) and Huffman coding techniques.
 As a result, Zstandard often achieves significantly higher compression ratios than lightweight compressors such as LZ4, particularly on structured or repetitive data. However, this improved compression comes at the cost of increased decompression complexity and reduced random-access efficiency, as individual values typically cannot be decompressed without processing the surrounding block.
 
+%table with comparison
+\begin{comment}
 \begin{table}[htbp]
 \centering
 \caption{Comparison of different block-based compressors with the Silesia compression corpus \cite{zstd,silesia}}
@@ -44,6 +46,7 @@ snappy 1.1.9          & 2.073 & 530 MB/s & 1660 MB/s \\
 \hline
 \end{tabular}
 \end{table}
+\end{comment}
 
 
 \subsection{Limitations}
@@ -54,74 +57,173 @@ Several systems attempt to mitigate this issue by using smaller block sizes or b
 Consequently, lightweight compression schemes that avoid block-level dependencies have gained attention in the context of analytical databases. These schemes trade some compression efficiency for predictable decompression costs and fine-grained access. FSST belongs to this class of compressors, providing symbol-based compression that allows individual strings to be decompressed independently. Understanding the strengths and limitations of block-based compressors is therefore essential for positioning FSST and the improvements proposed in this thesis relative to existing compression techniques.
 
 \section{FSST}
+\label{fsst}
 
 \subsection{General Idea}
 
 Fast Static Symbol Table (FSST) \cite{fsst} is a lightweight string compression algorithm that works by replacing substrings (symbols) in the original data with one-byte codes. A symbol table is constructed from a sample of the data, mapping symbols to codes. The term “static” refers to the fact that any string can be compressed or decompressed independently using the symbol table, without requiring any prior context, unlike block-based compressors discussed in the previous section.
-Individual strings in databases are typically no larger than 200 bytes, with the majority being less than 30 bytes. This makes the random-access property of FSST more valuable compared to block-based compressors, which often need to decompress an entire block of 128 KB to retrieve a single string. FSST also supports compressed query processing, since equality between original strings is equivalent to equality between their compressed representations. It may also be possible to perform more complex operations on compressed strings, such as pattern matching, which can reduce the need to decompress strings when processing a wide range of queries.
+Individual strings in databases are typically not larger than 200 bytes, with the majority being less than 30 bytes \cite{fsst}. This makes the random-access property of FSST more valuable compared to block-based compressors, which often need to decompress an entire block of 128 KB to retrieve a single string. FSST also supports compressed query processing, since equality between original strings is equivalent to equality between their compressed representations. It may also be possible to perform more complex operations on compressed strings, such as pattern matching, which can reduce the need to decompress strings when processing a wide range of queries.
 
-\begin{figure}[htbp]
+Symbols have lengths ranging from 1 to 8 bytes, and each symbol is mapped to a code from 0 to 254, with code 255 being reserved as an escape code that plays an important role during decompression. Consequently, the total number of usable symbols is 255. This results in a worst-case symbol table memory overhead of $8 \times 255 + 255$ bytes (symbols and their lengths), which is very unlikely in practice, as the average symbol length is usually close to 2 bytes \cite{fsst}.
+
+\begin{figure}[!htbp]
   \centering
   \includegraphics[width=0.8\textwidth]{figures/fsst_example}
   \caption{FSST compression example \cite{fsst}}
   \label{fsst_example}
 \end{figure}
 
-Symbols have lengths ranging from 1 to 8 bytes, and each symbol is mapped to a code from 0 to 254, with code 255 reserved as an escape code that plays an important role during decompression. Consequently, the total number of usable symbols is 255. This results in a worst-case symbol table memory overhead of $8 \times 255 + 255$ bytes, which is very unlikely in practice, as many symbols tend to be only 2 to 3 bytes long.
+Figure~\ref{fsst_example} shows the first 10 symbols of an example symbol table, with an additional array for symbol lengths. For example, the first string is compressed into three bytes (codes), where each code is the index of the corresponding symbol in the symbol table. 
+
+
 
 \subsection{Decompression}
-FSST decompression is fairly simple. The algotithm ieterates over the encoded input stream byte for byte and appends the corresponding symbol from the symbol table to the output stream. The exception of the escape code (code 255) can be checked with an if statement, where in that case the algorithm appends the following raw byte after the escape code as is and continues with the next byte.
+FSST decompression is fairly simple. The algorithm iterates over the encoded input stream byte by byte and appends the corresponding symbol from the symbol table to the output stream. The exception of the escape code (code 255) can be checked with an \texttt{if} statement, where in that case the algorithm appends the following raw byte after the escape code as is and continues with the next byte.
 
-The original FSST open-source implementation \cite{fsst_repo} optimizes decoding to avoid performing an if statement for every byte and instead loads 4 bytes every time and then checks if they contain the escape code. FSST decoding is therefore comparably fast approaching 2 GB/s according to the original paper's evaluation.
+The original FSST open-source implementation \cite{fsst_repo} optimizes decoding to avoid performing an \texttt{if} statement for every byte and instead loads 4 bytes every time and then checks if they contain the escape code. FSST decoding is therefore comparably fast approaching 2 GB/s according to the original paper's evaluation.
 
-The improvements of this thesis do not affect the FSST desompression method in any way. Decompression was used in this thesis solely to verify robustness of the added contributions.
+The improvements of this thesis do not affect the FSST decompression method in any way. Decompression was used in this thesis solely to validate correctness of the added contributions.
 
 \subsection{Compression}
 
 FSST compression is performed independently for each string in the corpus. A loop iterates over the bytes of the string. In each iteration, the longest matching symbol starting at the current position is used for encoding, and the current position in the string is updated accordingly. If no symbol in the table matches the current position, the byte is escaped by appending the escape code to the output stream, followed by the raw byte from the string.
 
-The function used to find the longest matching symbol is called $findLongestSymbol$, and its implementation is shown in Figure~\ref{algorithm3}. The same function is also used during symbol table construction.
+The function used to find the longest matching symbol is called \texttt{findLongestSymbol}, and its implementation is shown in Figure~\ref{algorithm3}. The same function is also used during symbol table construction.
 
 This greedy approach enables fast encoding at the cost of a suboptimal compression factor. An alternative approach is presented in Section~\ref{dp}.
 
 \subsection{Symbol Table Construction}
 
-The construction of the symbol table is the most important component of the FSST algorithm with respect to the achieved compression factor, as the encoding quality is tightly dependent on the set of symbols selected for the table. Selecting symbols is challenging because their effectiveness depends on one another whenever they overlap. This is the dependency issue described in the original paper. So the only reliable way to assess the significance of a symbol is to compress the sample using the current symbol table. However, evaluating all possible symbol tables is not feasible due to the enormous number of possibilities 
-($\binom{8N}{255}$ where $N$ denotes the sample size).
+The construction of the symbol table is the most important component of the FSST algorithm with respect to the achieved compression factor, as the encoding quality is tightly dependent on the set of symbols selected for the table. Selecting symbols is challenging because their effectiveness depends on one another whenever they overlap. This is the dependency issue described in the original paper. Therefore, the only reliable way to assess the significance of a symbol is to compress the sample using the current symbol table. However, evaluating all possible symbol tables is not feasible due to the enormous number of possibilities 
+($\binom{8N}{255}$ where $N$ denotes the sample size in bytes).
 
 The FSST algorithm shown in Figure~\ref{algorithm3} constructs the symbol table by iterating over a sample of the corpus for a fixed number of generations. In each generation, the current table is refined by discovering new symbol combinations and retaining those with the highest static gain. The gain of a symbol is computed as $gain = length \times frequency$, where length is the symbol length (between 1 and 8 bytes) and frequency is the number of times the symbol is selected when compressing the sample using the previous table.
 
 In the original implementation, the number of generations is set to five and the sample size to 16 KB. The sample is processed incrementally, such that in each generation a larger fraction of the sample is considered for symbol selection.
 
-\begin{figure}[h]
-  \centering
-  \includegraphics[width=0.3\textwidth]{figures/algorithm3}
-  \caption{FSST initial idea symbol table construction \cite{fsst}}
+
+
+\begin{figure}[!htbp]
+
+\lstset{
+  basicstyle=\ttfamily\scriptsize,
+  breaklines=true,
+  breakatwhitespace=true,
+  keepspaces=true,
+  columns=fullflexible,
+  breakindent=2em,
+  postbreak=\space
+}
+\centering
+  \begin{adjustbox}{center, max width=\textwidth}
+  \begin{minipage}[t]{0.48\textwidth}
+    \lstset{linewidth=\linewidth}
+    \begin{lstlisting}[language=Python]
+      class SymbolTable:
+        def __init__(st): 
+          st.nSymbols = 0
+          st.sIndex[257] = [0]*256
+          st.symbols[512] = ['']*512
+          for code in range(0,255)
+            st.symbols[code] = chr(code)
+        
+        def insert(st, s):
+          st.symbols[256+st.nSymbols++] = s
+        
+        def findLongestSymbol(st, text):
+          var letter = ord(text[0])
+          for code in range(st.sIndex[letter],st.sIndex[letter+1])
+            if (text.startswith(st.symbols[code]))
+              return code 
+          return letter 
+        
+        def compressCount(st, count1, count2, text):
+          var pos = 0
+          var prev, code = st.findLongestSymbol(text[pos:])
+          while ((pos += st.symbols[code].len()) < text.len())
+            prev = code
+            code = st.findLongestSymbol(text[pos:])
+            count1[code]++ 
+            count2[prev][code]++ 
+            if (code >= 256)
+              nextByte = ord(text[pos])
+              count1[nextByte]++
+              count2[prev][nextByte]++
+      
+    \end{lstlisting}
+    \end{minipage}%
+    \hfill
+    \begin{minipage}[t]{0.48\textwidth}
+    \lstset{linewidth=\linewidth}
+    \begin{lstlisting}[language=Python]
+      
+      def makeTable(st, count1, count2): 
+        # pick top symbols
+        var res = SymbolTable()
+        var cands = []
+        for code1 in range(0,256+st.nSymbols)
+          gain = st.symbols[code1].len()*count1[code1]
+          heapq.heappush(cands, (gain, st.symbols[code1]))
+          for code2 in range(0,256+st.nSymbols)
+            # concatenated symbols
+            s = (st.symbols[code1]+st.symbols[code2])[:8]
+            gain = s.len()*count2[code1][code2]
+            heapq.heappush(cands, (gain, s))
+        # fill with the best candidates
+        while (res.nSymbols < 255)
+          res.insert(heapq.heappop(cands))
+        return res.makeIndex()
+      
+      def makeIndex(st): 
+        var tmp = sort(st.symbols[256,256+st.nSymbols])
+        for i in range(0,st.nSymbols).reverse()
+          var letter = ord(tmp[i][0])
+          st.sIndex[letter] = 256+i
+          st.symbols[256+i] = tmp[i]
+        st.sIndex[256] = 256+st.nSymbols
+        return st
+
+      def buildSymbolTable(st, text): 
+        var res = SymbolTable()
+        for generation in [1,2,3,4,5]
+          var count1[512] = [0]*512
+          var count2[512][512] = [count1]*512
+          st.compressCount(res, count1, count2, text)
+          res = st.makeTable(res, count1, count2)
+        return res
+      
+   \end{lstlisting}
+  \end{minipage}
+  \end{adjustbox}
+  
+  \caption{FSST symbol table construction \cite{fsst}.}
   \label{algorithm3}
 \end{figure}
 
-The buildSymbolTable function is the main component of the algorithm, in which the five iterations over the sample are performed. Two counters,  $count1$ and $count2$, are used to record symbol frequencies when compressing the text using the previous symbol table. The counter $count1$ tracks individual symbols, while $count2$ records the concatenation of two symbols or the concatenation of a symbol and a literal byte.
+The \texttt{buildSymbolTable} function is the main component of the algorithm, in which the five iterations over the sample are performed. Two counters,  \texttt{count1} and \texttt{count2}, are used to record symbol frequencies when compressing the text using the previous symbol table. The counter \texttt{count1} tracks individual symbols, while \texttt{count2} records the concatenation of two symbols or the concatenation of a symbol and a literal byte.
 
 The indices of these counters range from 0 to 511. Indices from 0 to 255 correspond to escaped bytes (literal bytes), while indices from 256 to  $256 + st.nSymbols - 1$ (up to 511) denote actual symbols.
 
-In each generation, the counters are populated using the compressCount function, which compresses the text with the current symbol table. This function counts individual symbols in 
-$count1$ and records all pairs of successive symbols, as well as combinations of a symbol followed by a literal byte, in $count2$.
+In each generation, the counters are populated using the \texttt{compressCount} function, which compresses the text with the current symbol table. This function counts individual symbols in 
+\texttt{count1} and records all pairs of successive symbols, as well as combinations of a symbol followed by a literal byte, in \texttt{count2}.
 
-Real symbols are stored in $st.symbols$ starting from index 256 in alphabetical order. Symbols that begin with the same character are sorted in decreasing order of length. As a result, $st.findLongestSymbol$ terminates after finding the first matching symbol. The implementation details of this function in the open-source code are discussed later.
+Real symbols are stored in \texttt{st.symbols} starting from index 256 in alphabetical order. Symbols that begin with the same character are sorted in decreasing order of length. As a result, \texttt{st.findLongestSymbol} terminates after finding the first matching symbol.
 
-A new symbol table is then constructed from the counters using the makeTable function. Each symbol, literal byte, and their concatenations are inserted into a max heap, where the key is the computed gain of the candidate symbol. The 255 symbols with the highest static gains are selected for the next symbol table. Finally, the makeIndex function sorts the symbols as described above and initializes the $st.index[letter]$ table, which stores the position (code) of the first symbol beginning with a given letter.
+A new symbol table is then constructed from the counters using the \texttt{makeTable} function. Each symbol, literal byte, and their concatenations are inserted into a max heap, where the key is the computed gain of the candidate symbol. The 255 symbols with the highest static gains are selected for the next symbol table. Finally, the \texttt{makeIndex} function sorts the symbols as described above and initializes the \texttt{st.sIndex} table, which stores the position (code) of the first symbol beginning with a given letter.
+
+
+\paragraph{Evolution} 
+\mbox{}\\
+
+The FSST algorithm evolved from the previously described version to a branchless implementation that enables the use of SIMD instructions (AVX-512), significantly reducing encoding time. The primary bottleneck in encoding is the \texttt{findLongestSymbol} function. Therefore, a redesign of the symbol storage was introduced as a first optimization.
+
+Symbol codes are now stored in two separate data structures: a $256 \times 256$ array named \texttt{shortCodes} for symbols of length one and two bytes, and a hash table \texttt{hashTab} of size 1024 (1 KB) for symbols with lengths ranging from three to eight bytes. A lossy perfect hashing scheme is employed for longer symbols, using a hash function based on the first three bytes of the symbol. If inserting a symbol would result in a collision, the symbol is discarded, retaining only the symbol with the highest gain among colliding symbols of length three or greater.
+
+For each character $A$ for which no entry in \texttt{shortCodes[A][*]} is defined, the corresponding single-byte symbol is inserted if it exists. This guarantees that an access to \texttt{shortCodes} always returns the longest matching symbol of length one or two. The \texttt{findLongestSymbol} function first queries the \texttt{hashTab} to search for a matching symbol, then consults \texttt{shortCodes} if no match is found, and finally falls back to returning the literal byte. The function's return value is computed using a conditional move (MOV) instruction, thereby avoiding branching.
 \newline
 
 \noindent
-The FSST algorithm evolved from the previously described version to a branchless implementation that enables the use of SIMD instructions (AVX-512), significantly reducing encoding time. The primary bottleneck in encoding is the $findLongestSymbol$ function. Therefore, a redesign of the symbol storage was introduced as a first optimization.
-
-Symbol codes are now stored in two separate data structures: a $256 \times 256$ array named $shortCodes$ for symbols of length one and two bytes, and a hash table $hashTab$ of size 1024 (1 KB) for symbols with lengths ranging from three to eight bytes. A lossy perfect hashing scheme is employed for longer symbols, using a hash function based on the first three bytes of the symbol. If inserting a symbol would result in a collision, the symbol is discarded, retaining only the symbol with the highest gain among colliding symbols of length three or greater.
-
-For each character $A$ for which no entry in $shortCodes[A][*]$ is defined, the corresponding single-byte symbol is inserted if it exists. This guarantees that an access to $shortCodes$ always returns the longest matching symbol of length one or two. The $findLongestSymbol$ function first queries the $hashTab$ to search for a matching symbol, then consults $shortCodes$ if no match is found, and finally falls back to returning the literal byte. The function’s return value is computed using a conditional move (MOV) instruction, thereby avoiding branching.
-\newline
-
-\noindent
-Although the original FSST algorithm is highly optimized for runtime, particularly when using the SIMD variant, the greedy strategy employed by the $findLongestSymbol$ function does not always select the optimal symbol, both during compression and during symbol table construction. This leaves room for improving the compression factor by adopting a different optimization strategy that more carefully considers conflicts between overlapping symbols, as discussed in the following section.
+Although the original FSST algorithm is highly optimized for runtime, particularly when using the SIMD variant, the greedy strategy employed by the \texttt{findLongestSymbol} function does not always select the optimal symbol, both during compression and during symbol table construction. This leaves room for improving the compression factor by adopting a different optimization strategy that more carefully considers conflicts between overlapping symbols, as discussed in the following section.
 
 \begin{comment}
 Citation test~\parencite{latex}.

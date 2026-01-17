@@ -6,7 +6,9 @@
 \section{Dynamic Programming}
 \label{dp}
 
-The first contirbution of the thesis to the FSST algorithm of Figure~\ref{algorithm3} is replacing the $st.findLongestSymbol$ method with a DP function that gives "one" best symbol given the position in the text to encode (or training text in compressCount) with a single table lookup in $O(1)$ runtime. This table called $opt$ is constructed simultaneously with the DP table.
+\subsection{Idea and Formulas}
+
+The first contirbution of the thesis to the FSST algorithm of Figure~\ref{algorithm3} is replacing the \texttt{st.findLongestSymbol} method with a DP function that gives "one" best symbol given the position in the text to encode (or training text in compressCount) with a single table lookup in $O(1)$ runtime. This table called \texttt{opt} is constructed simultaneously with the DP table.
 \newline
 
 \noindent
@@ -14,15 +16,15 @@ To understand the utility of the used DP function in the code, let's first defin
 \[
   dp[i] = \text{smallest compressed size of the first $i$ bytes of the given text.}
 \]
-So the result for the whole text is in $dp[n]$. The base case is $dp[0] = 0$ as the compression of an empty string is always an empty string.
+The result for the whole text is therefore stored in $dp[n]$. The base case is $dp[0] = 0$ as the compression of an empty string is always an empty string.
 The recurrence is defined for each other value as: 
 \[
 dp[i] = \min(2 + dp[i-1], 1 + \min\limits_{\substack{0 \le j < i \\ s[j:i] \in symbols}} dp[j])
 \]
-where $s[j:i]$ denotes the substring of the text from position $j$ to $i-1$ (0-indexed). The formula simply chooses between either escaping the current byte or selecting one symbol that minimizes the DP value.
-In the first case, an overhead of two bytes must be added resulted in the escape byte followed by the raw byte from the string during encoding. In the second case, there is an added one byte for the code of the chosen symbol. Then all candidate symbols are the ones that match a suffix of the first $i$ bytes, thus the constraints under the second $min$.
+where \texttt{s[j:i]} denotes the substring of the text from position $j$ to $i-1$ (0-indexed). The formula simply chooses between either escaping the current byte or selecting one symbol that minimizes the DP value.
+In the first case, an overhead of two bytes must be added resulted in the escape byte followed by the raw byte from the string during encoding. In the second case, there is an added one byte for the code of the chosen symbol. All candidate symbols are the ones that match a suffix of the first $i$ bytes, thus the constraints under the second $min$.
 
-The problem with this formula is that the candidate symbols are ending at the position $i$, while building the $opt$ table requires knowing one best symbol beginning at a position $i$. So implementing this DP function will not help by filling the $opt$ table simultaneously, as we still need another dedicated function that also iterates over candidate symbols again at each position, but this time the candidate symbols are beginning at the current position and choosing one best symbol will depend on the DP values computed beforehand.
+The problem with this formula is that the candidate symbols are ending at the position $i$, while building the \texttt{opt} table requires knowing one best symbol beginning at a position $i$. As a result, implementing this DP function will not help by filling the \texttt{opt} table simultaneously, as we still need another dedicated function that also iterates over candidate symbols again at each position, but this time the candidate symbols are beginning at the current position and choosing one best symbol will depend on the DP values computed beforehand.
 \newline
 
 \noindent
@@ -30,18 +32,22 @@ As a consequence, the following DP function is used instead, defined for $0 \le 
 \[
   dp[i] = \text{smallest compressed size of the last $n-i$ bytes of the given text.}
 \]
-This is equivalent to say that $dp[i]$ is the smallest compressed size of the suffix of the given text starting at position $i$ (0-indexed). So the result for the whole text is in $dp[0]$. The base case is $dp[n] = 0$ as the suffix from position $n$ is an empty string.
+This is equivalent to say that $dp[i]$ is the smallest compressed size of the suffix of the given text starting at position $i$ (0-indexed). The result for the whole text is therefore stored in $dp[0]$. The base case is $dp[n] = 0$ as the suffix from position $n$ is an empty string.
 The recurrence is defined for each other position as:
 \[
 dp[i] = \min(2 + dp[i+1], 1 + \min\limits_{\substack{i < j \le n \\ s[i:j] \in symbols}} dp[j]).
 \]
-The two options to choose from are the same as in the previous formula, but candidate symbols to choose from must now begin at position $i$ as we are now calculating the results for suffixes instead of prefixes of the given text.
+The two options to choose from are the same as in the previous formula, but candidate symbols for the second option must now begin at position $i$ as we are now calculating the results for suffixes instead of prefixes of the given text.
 \newline
 
 \noindent
-This DP problem is a segmentation problem, where each segment is either a symbol, the escape code or a raw byte of the string that must follow the escape code. All segments have the same cost and we want to minimize the number of segments used to compress a given text. The first formula builds a bottom-up solution, while the second formula builds a top-down solution. Both should give the same result for the whole text as they are solving the same problem. The code in Figure~\ref{dp_python} represents the python implementation of the DP function $st.buildDP$ that fills both the DP and the $opt$ tables in a single pass.
+This DP problem is a segmentation problem, where each segment is either a symbol, the escape code or a raw byte of the string that must follow the escape code. All segments have the same cost and we want to minimize the number of segments used to compress a given text. The first formula builds a bottom-up solution, while the second formula builds a top-down solution. Both should give the same result for the whole text as they are solving the same problem. 
 
-\begin{figure}[htpb]
+\subsection{Implementation}
+
+The code in Figure~\ref{dp_python} represents the python implementation of the DP function \texttt{st.buildDP} that fills both the DP and the \texttt{opt} tables in a single pass.
+
+\begin{figure}[!htpb]
   \centering
   \begin{tabular}{c}
   \begin{lstlisting}[language=Python]
@@ -70,12 +76,12 @@ This DP problem is a segmentation problem, where each segment is either a symbol
   \label{dp_python}
 \end{figure}
 
-As the code shows, the DP table is filled from $n$ to 0 in descending order, where for each position other than $n$ the DP value is initialized with the corresponding value for the option of escaping the current byte. Then the inner loop iterates over the candidate symbols that begin with the current byte and match the next chunk of the text $data$.
-This code uses the $st.sIndex$ table, whose construction was shown in Figure~\ref{algorithm3}. So the iteration over the symbols is in decreasing order of their lengths. As a tie-breaker between symbols that yield the same DP value, this implementation chooses a symbol with the highest length (i.e. occurs first in the iteration), thus the use of '<' instead of '$\le$' in the if statement for updating the DP and $opt$ tables. There is an exception to this case, when choosing to escape the byte also yields the smallest DP value, then no symbol will be chosen.
+As the code shows, the DP table is filled from $n$ to 0 in descending order, where for each position other than $n$ the DP value is initialized with the corresponding value for the option of escaping the current byte. Then the inner loop iterates over the candidate symbols that begin with the current byte and match the next chunk of the text \texttt{data}.
+This code uses the \texttt{st.sIndex} table, whose construction was shown in Figure~\ref{algorithm3}. As a result, the iteration over the symbols is in decreasing order of their lengths. As a tie-breaker between symbols that yield the same DP value, this implementation chooses a symbol with the highest length (i.e. occurs first in the iteration), thus the use of '<' instead of '$\le$' in the \texttt{if} statement for updating the DP and \texttt{opt} tables. There is an exception to this case, when choosing to escape the byte also yields the smallest DP value, then no symbol will be chosen.
 
-This approach requires performing a memory comparision of at most 8 bytes for every symbol that begins with a certain byte. To avoid that, a trie is used in the C++ implementation of the constributions \cite{btrfsst_repo} to store the symbols in addition to the $hashTab$ and $shortCodes$ arrays. The trie is implemented as a vector of $TriNodes$, whose structure is shown in Figure~\ref{TrieNode}.
+This approach requires performing a memory comparision of at most 8 bytes for every symbol that begins with a certain byte. To avoid that, a trie is used in the C++ implementation of the constributions \cite{btrfsst_repo} to store the symbols in addition to the \texttt{hashTab} and \texttt{shortCodes} arrays. The trie is implemented as a vector of \texttt{TriNodes}, whose structure is shown in Figure~\ref{TrieNode}.
 
-\begin{figure}[htpb]
+\begin{figure}[!htpb]
   \centering
   \begin{tabular}{c}
   \begin{lstlisting}[language=C++]
@@ -92,11 +98,11 @@ This approach requires performing a memory comparision of at most 8 bytes for ev
   \label{TrieNode}
 \end{figure}
 
-Each node stores the code of the symbol ending at that node and the indices for the children nodes, where the maximum number of children is 256 (an edge for every possible byte). The maximum number of nodes in the trie is $(8 * 255 + 1)$, as all symbols are disjoint in the worst case and there are 255 actual symbols at most, with an additional node for the root. This makes the trie memory overhead around $2 MB$ in the extreme case.
+Each node stores the code of the symbol ending at that node and the indices for the children nodes, where the maximum number of children is 256 (an edge for every possible byte). The maximum number of nodes in the trie is $(8 * 255 + 1)$, as all symbols in the worst case don't share prefixes and there are at most 255 actual symbols, with an additional node for the root. This makes the additional trie memory overhead around $2 MB$ in the extreme case.
 
 Now finding candidate symbols can be done efficiently by traversing the trie and comparing one byte at each iteration instead of a whole symbol, with the possibility to break from the inner loop when there are no symbols beginning with a certain prefix. The inner loop of the current implementation is shown in Figure~\ref{dp_cpp}.
 
-\begin{figure}[htpb]
+\begin{figure}[!htpb]
   \centering
   \begin{tabular}{c}
   \begin{lstlisting}[language=C++]
@@ -124,13 +130,167 @@ Now finding candidate symbols can be done efficiently by traversing the trie and
   \label{dp_cpp}
 \end{figure}
 
-A similar traversal is used for adding each symbol into the trie, where instead of breaking when $node == -1$, a new node is created and the child entry is updated accordingly. Here, breaking is faster in practice than continuing the 8 full iterations without branching, as in the most cases no symbols will be found after the second or third iteration, due to the high number of symbols of lengths two and three in the symbol table. 
+This trie traversal from the root implies iterating over the symbols in increasing order of their lengths. Thus the use of $\le$ in the \texttt{if} statement for updateing the DP value, in order to keep the same tie-break logic as in the python implementation. However in this case choosing a symbol will be prefered over escaping the byte, when both options result in the same DP value, which can be helpful in later generations to discover more symbol combinations.
 
-After building the DP and $opt$ tables, choosing the next symbol in $compressCount$ or in the compression method can be done by a simple lookup in the $opt$ table. The implementation wraps this operation in a function called $findBestSymbol$. Results of this DP approach on the compression factor (CF) will be discussed in Section~\ref{dp_results}.  
+A similar traversal is used for adding each symbol into the trie, where instead of breaking when \texttt{node == -1}, a new node is created and the child entry is updated accordingly. Here, breaking is faster in practice than continuing the 8 full iterations without branching, as in the most cases no symbols will be found after the second or third iteration, due to the high number of symbols of lengths two and three in the symbol table. 
+
+Having the trie as the structure used for the \texttt{findLongestSymbol} function, there is no need for the \texttt{sIndex} table and therefore the \texttt{makeIndex} function. As a result, including this method in the original C++ implementation of FSST, that already doesn't use \texttt{makeIndex}, becomes easier.     
+
+After building the DP and \texttt{opt} tables, choosing the next symbol in \texttt{compressCount} or in the compression function can be done by a simple lookup in the \texttt{opt} table. The implementation wraps this operation in a function called \texttt{findBestSymbol}.
 
 \section{$3^{rd}$ Counter}
 
+The DP strategy introduced in the previous section replaces the greedy approach of the \texttt{findLongestSymbol} function. As a result, shorter symbols may become more valuable and therefore more frequent in terms of their counts computed by the \texttt{compressCount} function. To encourage the symbol selection method to still choose longer symbols, a third frequency counter \texttt{count3} is introduced. This counter keeps count of the appearances of all triples of consecutive symbols used for compressing the sample, in addition to the triples constructed from a pair of symbols followed by the next literal byte in the text data.
+
+Counting triples of symbols will make converging the symbol table faster, and with combination of the DP approach of counting frequencies, more variation is introduced to candidate symbols from one generation to another. That means, adding a third counter while still having \texttt{findLongestSymbol} instead of the DP function will simulate skipping generations and quickly converging the symbol table to have long symbols that are concatenated from symbols of the first couple generations. The DP approach, on the other hand, balances the symbol selection by looking at the overall compression result and considering symbols that globally achieve the best compression, regardless of their lengths. Therefore, this combination improves the overall symbol selection. 
+
+\paragraph{Changes to Code} 
+\mbox{}\\
+
+This contribution affects both the \texttt{compressCount} and the \texttt{makeTable} functions. \texttt{compressCount} should now have a third variable (for example \texttt{prev2}), in addition to \texttt{code} and \texttt{prev} that were used in the implementation in Figure~\ref{algorithm3}, to store the code chosen two steps ago. Then the triples, whose frequencies should be increased are (\texttt{prev2}, \texttt{prev}, \texttt{code}) and (\texttt{prev2}, \texttt{prev}, \texttt{nextByte}), in case \texttt{code} is an actual symbol and not a literal byte. 
+
+The function \texttt{makeTable} should also consider all possible three-symbol concatenations as potential candidates and push them to the heap, with the gain being calculated as usual. 
+
+Storing \texttt{count3} as a three dimansional table, analogous to \texttt{count1} and \texttt{count2}, will be highly inefficient, as the size of the table will be $512^{3} B = 128 MiB$ and iterating over all three-symbol concatenations will be extremely slow. Noticing that we only need to consider triples having non-zero counts (i.e. they actually appear in the ample compression), makes it possible to store the triples in a HashMap structure. The size of \texttt{count3} will be then linear to the sample size, same as \texttt{count1} and \texttt{count2}.
+
+
+
+\begin{figure}[!htpb]
+  \centering
+  \begin{tabular}{c}
+  \begin{lstlisting}[language=C++]
+    struct Count3 {
+      unordered_map<u32, u16> m;
+      void clear() { m.clear(); }
+      void inc(u16 a, u16 b, u16 c) {
+          u32 k = pack3(a,b,c);
+          auto it = m.find(k);
+          if (it == m.end()) m.emplace(k, 1);
+          else it->second++;
+      }
+      u16 get(u16 a, u16 b, u16 c) const {
+        auto it = m.find(pack3(a,b,c));
+        return it==m.end()?0:it->second;
+      }
+    };
+
+    static inline u32 pack3(u16 a, u16 b, u16 c) {
+      // each code fits in 9 bits (0..511)
+      return ((u32)a << 18) | ((u32)b << 9) | (u32)c;
+    }
+  \end{lstlisting}
+  \end{tabular}
+  \caption{Count3 structure}
+  \label{count3}
+\end{figure}
+
+The code snippet in Figure~\ref{count3} shows how \texttt{count3} is implemented in the C++ code for the contributions \cite{btrfsst_repo}. As the codes take at most 9 bits each, the triple can be packed into 27 bits and therefore wrapped in an unsigned integer variable of 32 bits. This allows fast frequency addition and frequency query of a specefic triple.
+
+
 \section{Symbol Pruning}
+
+The current \texttt{makeTable} function greedily takes the first 255 symbols in terms of static gain, without taking into account the conflicts between those symbols, and leaving most of the candidates in the heap unchosen. Especially that now the number of candidates growed by around $\times 1.5$ due to the third frequency counter, there is more potential to miss better symbols. Some of the chosen symbols may be a substring of other bigger symbols and therefore conflicting with them. It means that in \texttt{compressCount} of the next generation, the bigger symbol is most likely to be chosen over the smaller one. This possibility is higher when the smaller one is a prefix and it is certain when using \texttt{findLongestSymbol} instead of the DP function.
+Then the new count of the smaller symbol will be smaller after the next generaion than its current count. Therefore, one role of a generation, in addition to discovering new symbol combinations through concatenations, is correcting this overestimation in the counts of smaller symbols.
+
+Symbol pruning is one step forward to this goal. By partially correcting the counts of symbols that are parts of other bigger symbols, we save time in the next generation and add more variaty to the symbols chosen in the symbol table.
+\newline
+
+\noindent
+When choosing a symbol in \texttt{makeTable} that is formed by a concatenation of two or three symbols, we know that we overestimated the counts for the symbols that were used in the concatenation, especially if they are not yet chosen into the symbol table (i.e. they have less gain).
+
+The idea of the count correction that was used is substracting the count of the bigger symbol from the counts of all smaller symbols used in the concatenation and all successive pairs of them, in case the bigger symbol is a three-symbol concatenation. For example, consider the symbols $A$, $B$, $C$ and $D=ABC$ a concatenation of the three first symbols. When $D$ is inserted in the new symbol table to construct, we reduce the count of $D$ from the counts of the symbols $A$, $B$, $C$, $AB$ and $BC$.
+This reduction happens on the fly when choosing the symbols through the pop operations of the max heap. Then the updated symbols are pushed back to the heap with the updated gains and the old gains become invalid.
+
+This reduction may lead to some symbols having negative counts due to overlap, when the smaller symbol is part of different bigger symbols that are chosen in the symbol table. Those bigger symbols may overlap exactly at the small symbol causing a double-substraction from its count. A small example to illustrate this case is having a portion of a string compressed to symbols $ABC$, then choosing symbols $AB$ and $BC$ would decrease two occurances from the count of $B$, which actually appears only once. This problem can be modeled as an inclusion-exclusion problem, then the correction to the count of $B$ from the example is to add the count of the intersection of $AB$ and $BC$, which is $ABC$. 
+
+Including concatenations of symbols and raw bytes into the counts and counting concatenation of symbols that may exceed the maximum symbol length make the simple addition of the count of the intersection symbol not enough to avoid negative counts. Therefore, the code is adapted to deal with negative gains by simply discarding such symbols and not pushing them back to the heap. Experiences showed that not considering symbols, whose gains become negative, has no negative effect on the compression factor and might yield to a faster symbol table construction.
+\newline
+
+\noindent
+During symbol selection, if the smaller symbol occures before the bigger symbol that has it as a substring (the smaller symbol has more gain), it will not be pruned. Pruning such symbols proved to be significantly slower. A seperate intermediate set has to be maintained for symbols that can be pruned, therefore not pushing them directly to the heap until the whole symbol selection process finishes. When pruned, they have to be removed from the intermediate set and pushed back to the heap.
+
+As there was no noticeable benefit from this pruning direction in terms of compression factor, the symbol selection method pushes popped symbols from the max heap, that have not been pruned, directly to the new symbol table. Pruning will consequently only affect symbols with less gain that will occur afterwards in the extraction order.
+
+\begin{figure}[!htpb]
+  \centering
+  \begin{tabular}{c}
+    \begin{lstlisting}[language=Python]
+      def push_cand(code1: int, code2: int, code3: int, gain: int):
+      if gain <= 0:
+      return
+      heapq.heappush(heap, (-gain, code1, code2, code3))
+    \end{lstlisting}
+  \end{tabular}
+  \caption{Implementation of pushing cadidates into the heap}
+  \label{push_cand}
+\end{figure}
+
+As the python implementation in Figure~\ref{push_cand} shows, the symbol to push is always considered as the concatenation of three symbols and their codes are pushed to the heap along with the gain. Here, the gain is negated because the python \texttt{heapq} module implements a min heap. \texttt{code2} and \texttt{code3} are set to $-1$ denoting their absence, if the symbol to push is not a concatenation or is a concatenation of two symbols. The pruned symbols with negative gains are discarded as discussed earlier.
+
+\begin{figure}[!htpb]
+  \lstset{
+    basicstyle=\ttfamily\footnotesize
+  }
+  \centering
+  \begin{tabular}{c}
+  \begin{lstlisting}[language=Python]
+    # Fill a fresh table with the best unique candidates
+    res = SymbolTable()
+    seen: set[bytes] = set()  # avoid inserting duplicates
+    while res.nSymbols < MAX_REAL_SYMBOLS and heap:
+        # g is negative gain
+        g, code1, code2, code3 = heapq.heappop(heap)
+        s = # reconstruct symbol
+        curcnt = # restore current count
+        if g != -curcnt * len(s) : 
+            continue # gain is invalid
+        if s in seen:
+            continue
+        seen.add(s)
+        res.insert(s)
+        if code2 == -1:
+            continue # nothing to prune
+        # Pruning
+        # prev is the previous symbol table
+        L1 = len(prev.symbols[code1])
+        L2 = len(prev.symbols[code2])
+        if code3 == -1: # two-code symbol
+            # Update the counts of prefix and suffix symbols
+            count1[code1] -= curcnt
+            if code1 != code2: #
+                push_cand(code1, -1, -1, L1 * count1[code1])
+            count1[code2] -= curcnt
+            push_cand(code2, -1, -1, L2 * count1[code2])
+        else: # three-code symbol
+            L3 = len(prev.symbols[code3])
+            # Update the counts of one code symbols 
+            count1[code1] -= curcnt
+            if code1 != code2 and code1 != code3: #
+                push_cand(code1, -1, -1, L1 * count1[code1])
+            count1[code2] -= curcnt
+            if code2 != code3: #
+                push_cand(code2, -1, -1, L2 * count1[code2])
+            count1[code3] -= curcnt
+            push_cand(code3, -1, -1, L3 * count1[code3])
+            # pruning of two-code symbols
+            L23 = min(MAX_SYMBOL_LEN, L2 + L3)
+            count2[code1][code2] -= curcnt
+            if code1 != code2 or code2 != code3: #
+                push_cand(code1, code2, -1, (L1 + L2) * count2[code1][code2])
+            count2[code2][code3] -= curcnt
+            push_cand(code2, code3, -1, L23 * count2[code2][code3])
+  \end{lstlisting}
+  \end{tabular}
+  \caption{Implementation of symbol pruning}
+  \label{pruning}
+\end{figure}
+
+The updated \texttt{makeTable} function now constructs the candidates from the \texttt{count1} and \texttt{count2} arrays as usual, but for three-symbol concatenations a loop over the HashMap of \texttt{count3} is added. Then the candidates are pushed with the \texttt{push\_cand} helper function before entering the while loop to choose the symbols of the next symbol table. This loop has now to first reconstruct the popped symbol and its current count from the codes, as shown in Figure~\ref{pruning}. Then if the symbol has been already pruned, it will be discarded. This check is performed through the comparison of the symbol's current gain with its gain at insertion time into the heap. 
+Next comes the insertion of the symbol to the new symbol table followed by the pruning logic. The \texttt{if} statements that precede some of the \texttt{push\_cand} operations, marked with an empty comment, avoid pushing the same pruned symbol twice into the heap, as only the last push will be valid. This saves the insertion time and also the time of extracting those invalid states of the symbols. Therefore, if some symbol appears as part of the bigger symbol in multiple ways, it will be pushed only once to the heap after all reductions of its count.
+\newline
+
+\noindent
+Symbol pruning complements the two previously introduced contributions by partially reducing the conflicts between symbols and their concatenations obtained from \texttt{compressCount}, especially after adding a third counter. Furthermore, pruning helped introduce more symbols, that would have been ignored, giving more options for the DP function to find a better compression with the new set of symbols in the following generation. 
 
 
 \begin{comment}
