@@ -127,9 +127,6 @@ In the original implementation, the number of generations is set to five and the
           for code in range(0,255)
             st.symbols[code] = chr(code)
         
-        def insert(st, s):
-          st.symbols[256+st.nSymbols++] = s
-        
         def findLongestSymbol(st, text):
           var letter = ord(text[0])
           for code in range(st.sIndex[letter],st.sIndex[letter+1])
@@ -149,6 +146,19 @@ In the original implementation, the number of generations is set to five and the
               nextByte = ord(text[pos])
               count1[nextByte]++
               count2[prev][nextByte]++
+
+        def buildSymbolTable(st, text): 
+          var res = SymbolTable()
+          for generation in [1,2,3,4,5]:
+            var count1[512] = [0]*512
+            var count2[512][512] = [count1]*512
+            st.compressCount(
+              res, count1, count2, text
+            )
+            res = st.makeTable(
+              res, count1, count2
+            )
+          return res
       
     \end{lstlisting}
     \end{minipage}%
@@ -156,17 +166,28 @@ In the original implementation, the number of generations is set to five and the
     \begin{minipage}[t]{0.48\textwidth}
     \lstset{linewidth=\linewidth}
     \begin{lstlisting}[language=Python]
+      def insert(st, s):
+        st.symbols[256+st.nSymbols++] = s
       
       def makeTable(st, count1, count2): 
         # pick top symbols
         var res = SymbolTable()
         var cands = []
         for code1 in range(0,256+st.nSymbols)
-          gain = st.symbols[code1].len()*count1[code1]
-          heapq.heappush(cands, (gain, st.symbols[code1]))
+          gain = (
+            st.symbols[code1].len() * 
+            count1[code1]
+          )
+          heapq.heappush(
+            cands,
+            (gain, st.symbols[code1])
+          )
           for code2 in range(0,256+st.nSymbols)
             # concatenated symbols
-            s = (st.symbols[code1]+st.symbols[code2])[:8]
+            s = (
+              st.symbols[code1]
+              + st.symbols[code2]
+            )[:8]
             gain = s.len()*count2[code1][code2]
             heapq.heappush(cands, (gain, s))
         # fill with the best candidates
@@ -175,7 +196,9 @@ In the original implementation, the number of generations is set to five and the
         return res.makeIndex()
       
       def makeIndex(st): 
-        var tmp = sort(st.symbols[256,256+st.nSymbols])
+        var tmp = (
+          sort(st.symbols[256,256+st.nSymbols])
+        )
         for i in range(0,st.nSymbols).reverse()
           var letter = ord(tmp[i][0])
           st.sIndex[letter] = 256+i
@@ -183,14 +206,7 @@ In the original implementation, the number of generations is set to five and the
         st.sIndex[256] = 256+st.nSymbols
         return st
 
-      def buildSymbolTable(st, text): 
-        var res = SymbolTable()
-        for generation in [1,2,3,4,5]
-          var count1[512] = [0]*512
-          var count2[512][512] = [count1]*512
-          st.compressCount(res, count1, count2, text)
-          res = st.makeTable(res, count1, count2)
-        return res
+      
       
    \end{lstlisting}
   \end{minipage}
