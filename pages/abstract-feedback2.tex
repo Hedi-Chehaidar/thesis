@@ -1,0 +1,29 @@
+\chapter{\abstractname}
+
+%TODO: Abstract
+\noindent
+Modern analytical database systems process large volumes of string data, where efficient compression is essential for reducing memory footprint and improving performance.
+
+% Mihail: Somehow I think the switch to FSST is too abrupt. Maybe you say sth like: "For this, having performant string encoding schemes is [...]". A recent proposal is [...],", so that you connect it better. Now it's like a cliff..
+While the Fast Static Symbol Table (FSST) compression scheme provides excellent decompression speed and random-access capabilities, its effectiveness heavily depends on the quality of the constructed symbol table. 
+\newline
+
+\noindent
+The original FSST algorithm relies on heuristic, greedy symbol selection, which can lead to suboptimal symbol choices and limit achievable compression ratios.
+\newline
+
+\noindent
+This thesis presents several enhancements to the FSST compression method that improve symbol table construction while preserving FSST's core advantages.
+The central contribution is a refined symbol selection process that systematically identifies more effective symbols and avoids redundant or conflicting choices.
+\newline
+
+\noindent
+First, a dynamic programming approach is introduced to evaluate and select higher-quality symbols within each generation, enabling a more globally informed optimization compared to the original greedy strategy. Second, an additional frequency counter is incorporated to accelerate the discovery of longer symbols and to explicitly favor them in subsequent generations, improving the exploitation of longer recurring patterns in the data. Third, a symbol pruning mechanism is applied to eliminate conflicting and redundant symbols, ensuring a more compact and effective symbol table.
+\newline
+
+\noindent
+Together, these techniques significantly improve the robustness and quality of the symbol table generation process. Experimental evaluation demonstrates that the proposed enhancements lead to consistently improved
+
+% Mihail: Numbers!
+% Mihail: The `systems' is an orphan here (alone on the line). Maybe once you write the numbers, it will be fixed.
+compression ratios compared to the original FSST algorithm, while maintaining its fast decompression and random-access properties. The results show that careful algorithmic refinement of symbol selection can yield substantial gains without altering the lightweight and practical nature of FSST, making the improved approach well suited for use in modern analytical systems.
