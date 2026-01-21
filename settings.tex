@@ -4,15 +4,17 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[sc]{mathpazo}
-\usepackage[ngerman,american]{babel}
+\usepackage[ngerman,american,british]{babel}
 \usepackage[autostyle]{csquotes}
 \usepackage[
   backend=biber,
   style=ieee,
   sorting=none,
-  url=false,
+  url=true,
   doi=true,
-  isbn=false]{biblatex}
+  isbn=false,
+  language=british,
+  autolang=other]{biblatex}
  % TODO: adapt citation style
 \usepackage{graphicx}
 \usepackage{scrhack} % necessary for listings package
@@ -27,6 +29,8 @@
 \usepackage[printonlyused]{acronym}
 \usepackage{ifthen}
 
+\renewcommand{\lstlistingname}{Listing}
+\renewcommand{\lstlistlistingname}{List of Listings}
 
 \hypersetup{hidelinks} % removes colored boxes around references and links
 
@@ -64,7 +68,7 @@
   \newcommand{\fg}{black} % foreground
 }
 
-\bibliography{bibliography}
+\bibliography{bibliography.bib}
 
 \setkomafont{disposition}{\normalfont\bfseries} % use serif font for headings
 \linespread{1.05} % adjust line spread for mathpazo font
@@ -102,5 +106,5 @@
   autogobble,
   keywordstyle=\bfseries\color{TUMBlue},
   stringstyle=\color{TUMAccentGreen},
-  captionpos=b
+  captionpos=b 
 }

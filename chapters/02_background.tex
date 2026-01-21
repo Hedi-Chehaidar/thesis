@@ -42,7 +42,7 @@ A max heap is a complete binary tree-based data structure that maintains the hea
 
 The primary operations supported by a max heap include insertion, extraction of the maximum element, and key updates. Each of these operations can be performed in logarithmic time with respect to the number of elements in the heap. This efficiency makes max heaps particularly well suited for priority-based selection tasks, where the most valuable or promising element must be accessed repeatedly.
 
-The max heap below stores the following data: \{(42, fs), (35, comp), (30, str), (18, db), (15, zip), (10, io)\}. These (int, string) pairs can represent gains and symbols respectively in the context of FSST, where the gain is a heuristic to measure how good a symbol is. Storing the information in this format allows for the symbol with the highest gain to be selected first from the max heap with the 'pop' operation, extracting the element in the root node.   
+The max heap below stores the following data: \{(42, ``fs''), (35, ``comp''), (30, ``str''), (18, ``db''), (15, ``zip''), (10, ``io'')\}. These (int, string) pairs can represent gains and symbols respectively in the context of FSST, where the gain is a heuristic to measure how good a symbol is. Storing the information in this format allows for the symbol with the highest gain to be selected first from the max heap with the 'pop' operation, extracting the element in the root node.   
 
 \begin{figure}[h]
 \centering
@@ -90,7 +90,7 @@ As the figure shows, each node has a higher key than its children. In this case 
 \label{maxheap-pop}
 \end{figure}
 
-The pop operation extracts the element of the root node, which is the element with the highest key. Then the rest of the elements are reordered to maintain the max heap property. This operation has a runtime complexity of $O(log(n))$, where $n$ is the number of nodes in the heap.  
+The pop operation extracts the element of the root node, which is the element with the highest key. Then the rest of the elements are reordered to maintain the max heap property. This operation has a runtime complexity of $O(\log(n))$, where $n$ is the number of nodes in the heap.  
 
 \begin{figure}[h]
 \centering
@@ -115,7 +115,7 @@ The pop operation extracts the element of the root node, which is the element wi
 \label{maxheap-insert}
 \end{figure}
 
-The insert operation inserts a new element to the heap and then reorders the rest of the elements to maintain the max heap property like in the pop operation. This operation also has a runtime complexity of $O(log(n))$.
+The insert operation inserts a new element to the heap and then reorders the rest of the elements to maintain the max heap property like in the pop operation. This operation also has a runtime complexity of $O(\log(n))$.
 \newline
 
 \noindent
@@ -128,7 +128,7 @@ Tries provide efficient operations for prefix-based queries, insertion, and look
 
 \noindent
 \newline
-The following trie stores the 5 strings "fs", "fst", "db", "dbms", and "zip" with a mapping for each string as an integer stored in the corresponding terminal node. The strings stored can be interpreted as the symbols of a symbol table and the integers as the corresponding codes (one code for each symbol) in the context of FSST. Details will follow in next sections.
+The following trie stores the 5 strings ``fs'', ``fst'', ``db'', ``dbms'', and ``zip'' with a mapping for each string as an integer stored in the corresponding terminal node. The strings stored can be interpreted as the symbols of a symbol table and the integers as the corresponding codes (one code for each symbol) in the context of FSST. Details will follow in next sections.
 
 \begin{figure}[h]
 \centering
@@ -165,7 +165,7 @@ The following trie stores the 5 strings "fs", "fst", "db", "dbms", and "zip" wit
 
 As the trie shows, terminal nodes (gray nodes) mark the end of a symbol and contain the corresponding code. A symbol can be searched by a traversal of the trie from the root to the terminal node. Each edge corresponds to the next character in the symbol search.
 
-Symbols can have other symbols as a prefix and in that case the terminal node of the prefix symbol will be an ancestor of the terminal node of the bigger symbol. For example, the trie above stores the symbol "db" which is a prefix of the symbol "dbms".
+Symbols can have other symbols as a prefix and in that case the terminal node of the prefix symbol will be an ancestor of the terminal node of the bigger symbol. For example, the trie above stores the symbol ``db'' which is a prefix of the symbol ``dbms''.
 
 
 \begin{comment}
@@ -253,7 +253,7 @@ See~\autoref{tab:sample}, \autoref{fig:sample-drawing}, \autoref{fig:sample-plot
   \centering
   \begin{tabular}{c}
   \begin{lstlisting}[language=SQL]
-    SELECT * FROM tbl WHERE tbl.str = "str"
+    SELECT * FROM tbl WHERE tbl.str = str
   \end{lstlisting}
   \end{tabular}
   \caption[Example listing]{An example for a source code listing.}\label{fig:sample-listing}

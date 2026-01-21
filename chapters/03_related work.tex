@@ -2,17 +2,33 @@
 % Add the above to each chapter to make compiling the PDF easier in some editors.
 
 \chapter{Related Work}\label{chapter:related work}
-
+\begin{comment}
+\lstset{
+  basicstyle=\ttfamily\scriptsize,
+  breaklines=true,
+  breakatwhitespace=true,
+  keepspaces=true,
+  columns=fullflexible,
+  breakindent=2em,
+  postbreak=\space
+}
+\end{comment}
+\lstset{%
+  numbers=left,
+  numberstyle=\tiny,
+  stepnumber=1,
+  xleftmargin=2em
+}
 \section{Block-Based Compressors}
 General-purpose block-based compression algorithms are widely used across storage systems, operating systems, and data processing pipelines due to their ability to achieve high compression ratios on diverse data types. These compressors operate by partitioning the input data into blocks of fixed or variable size and compressing each block independently. This design enables parallel compression and decompression, robust error containment, and adaptability to different data distributions.
 
 \subsection{LZ4}
 One of the most prominent examples of such algorithms is LZ4, a lightweight compressor based on the Lempel-Ziv 77 (LZ77) family of dictionary compression techniques.
-The LZ77 general technique works by scanning a block with a usual size of 128 KB as input, detecting byte sequences that appeared before. Repeated sequences are encoded as a pair (\texttt{offset}, \texttt{length}) where \texttt{offset} references the first appearance of the sequence in the output stream.
+The general LZ77 technique works by scanning an input block (usually 128~KB), detecting byte sequences that appeared before. Repeated sequences are encoded as a pair (\texttt{offset}, \texttt{length}) where \texttt{offset} references the first appearance of the sequence in the output stream.
 
 What distinguishes LZ4 is that during compression a hash table is used to quickly identify matches in the input and greedily accepting the first match found. This approach minimizes CPU usage, providing compression speed > 500 MB/s per core.
 
-LZ4 decompression is very similar to just performing memory copy ('memcpy') operations, making it bounded by memory bandwith with speed of multiple GB/s per core, typically reaching RAM speed limits on multi-core systems.
+LZ4 decompression is very similar to just performing memory copy ('memcpy') operations, making it bounded by memory bandwidth with speed of multiple GB/s per core, typically reaching RAM speed limits on multi-core systems.
  
 LZ4 prioritizes decompression speed over compression ratio, making it suitable for performance-critical workloads where fast data access is required. It achieves compression by identifying repeated byte sequences within a block and encoding them as references to earlier occurrences \cite{lz4}.
 
@@ -61,7 +77,7 @@ Consequently, lightweight compression schemes that avoid block-level dependencie
 
 \subsection{General Idea}
 
-Fast Static Symbol Table (FSST) \cite{fsst} is a lightweight string compression algorithm that works by replacing substrings (symbols) in the original data with one-byte codes. A symbol table is constructed from a sample of the data, mapping symbols to codes. The term “static” refers to the fact that any string can be compressed or decompressed independently using the symbol table, without requiring any prior context, unlike block-based compressors discussed in the previous section.
+Fast Static Symbol Table (FSST) \cite{fsst} is a lightweight string compression algorithm that works by replacing substrings (symbols) in the original data with one-byte codes. A symbol table is constructed from a sample of the data, mapping symbols to codes. The term ``static'' refers to the fact that any string can be compressed or decompressed independently using the symbol table, without requiring any prior context, unlike block-based compressors discussed in the previous section.
 Individual strings in databases are typically not larger than 200 bytes, with the majority being less than 30 bytes \cite{fsst}. This makes the random-access property of FSST more valuable compared to block-based compressors, which often need to decompress an entire block of 128 KB to retrieve a single string. FSST also supports compressed query processing, since equality between original strings is equivalent to equality between their compressed representations. It may also be possible to perform more complex operations on compressed strings, such as pattern matching, which can reduce the need to decompress strings when processing a wide range of queries.
 
 Symbols have lengths ranging from 1 to 8 bytes, and each symbol is mapped to a code from 0 to 254, with code 255 being reserved as an escape code that plays an important role during decompression. Consequently, the total number of usable symbols is 255. This results in a worst-case symbol table memory overhead of $8 \times 255 + 255$ bytes (symbols and their lengths), which is very unlikely in practice, as the average symbol length is usually close to 2 bytes \cite{fsst}.
@@ -88,7 +104,7 @@ The improvements of this thesis do not affect the FSST decompression method in a
 
 FSST compression is performed independently for each string in the corpus. A loop iterates over the bytes of the string. In each iteration, the longest matching symbol starting at the current position is used for encoding, and the current position in the string is updated accordingly. If no symbol in the table matches the current position, the byte is escaped by appending the escape code to the output stream, followed by the raw byte from the string.
 
-The function used to find the longest matching symbol is called \texttt{findLongestSymbol}, and its implementation is shown in Figure~\ref{algorithm3}. The same function is also used during symbol table construction.
+The function used to find the longest matching symbol is called \texttt{findLongestSymbol}, and its implementation is shown in Lst.~\ref{algorithm3}. The same function is also used during symbol table construction.
 
 This greedy approach enables fast encoding at the cost of a suboptimal compression factor. An alternative approach is presented in Section~\ref{dp}.
 
@@ -97,124 +113,127 @@ This greedy approach enables fast encoding at the cost of a suboptimal compressi
 The construction of the symbol table is the most important component of the FSST algorithm with respect to the achieved compression factor, as the encoding quality is tightly dependent on the set of symbols selected for the table. Selecting symbols is challenging because their effectiveness depends on one another whenever they overlap. This is the dependency issue described in the original paper. Therefore, the only reliable way to assess the significance of a symbol is to compress the sample using the current symbol table. However, evaluating all possible symbol tables is not feasible due to the enormous number of possibilities 
 ($\binom{8N}{255}$ where $N$ denotes the sample size in bytes).
 
-The FSST algorithm shown in Figure~\ref{algorithm3} constructs the symbol table by iterating over a sample of the corpus for a fixed number of generations. In each generation, the current table is refined by discovering new symbol combinations and retaining those with the highest static gain. The gain of a symbol is computed as $gain = length \times frequency$, where length is the symbol length (between 1 and 8 bytes) and frequency is the number of times the symbol is selected when compressing the sample using the previous table.
+The FSST algorithm shown in Lst.~\ref{algorithm3} constructs the symbol table by iterating over a sample of the corpus for a fixed number of generations. In each generation, the current table is refined by discovering new symbol combinations and retaining those with the highest static gain. The gain of a symbol is computed as $gain = length \times frequency$, where length is the symbol length (between 1 and 8 bytes) and frequency is the number of times the symbol is selected when compressing the sample using the previous table.
 
 In the original implementation, the number of generations is set to five and the sample size to 16 KB. The sample is processed incrementally, such that in each generation a larger fraction of the sample is considered for symbol selection.
 
 
-
-\begin{figure}[!htbp]
-
-\lstset{
-  basicstyle=\ttfamily\scriptsize,
-  breaklines=true,
-  breakatwhitespace=true,
-  keepspaces=true,
-  columns=fullflexible,
-  breakindent=2em,
-  postbreak=\space
-}
-\centering
-  \begin{adjustbox}{center, max width=\textwidth}
-  \begin{minipage}[t]{0.48\textwidth}
-    \lstset{linewidth=\linewidth}
-    \begin{lstlisting}[language=Python]
-      class SymbolTable:
-        def __init__(st): 
-          st.nSymbols = 0
-          st.sIndex[257] = [0]*256
-          st.symbols[512] = ['']*512
-          for code in range(0,255)
-            st.symbols[code] = chr(code)
-        
-        def findLongestSymbol(st, text):
-          var letter = ord(text[0])
-          for code in range(st.sIndex[letter],st.sIndex[letter+1])
-            if (text.startswith(st.symbols[code]))
-              return code 
-          return letter 
-        
-        def compressCount(st, count1, count2, text):
-          var pos = 0
-          var prev, code = st.findLongestSymbol(text[pos:])
-          while ((pos += st.symbols[code].len()) < text.len())
-            prev = code
-            code = st.findLongestSymbol(text[pos:])
-            count1[code]++ 
-            count2[prev][code]++ 
-            if (code >= 256)
-              nextByte = ord(text[pos])
-              count1[nextByte]++
-              count2[prev][nextByte]++
-
-        def buildSymbolTable(st, text): 
-          var res = SymbolTable()
-          for generation in [1,2,3,4,5]:
-            var count1[512] = [0]*512
-            var count2[512][512] = [count1]*512
-            st.compressCount(
-              res, count1, count2, text
-            )
-            res = st.makeTable(
-              res, count1, count2
-            )
-          return res
-      
-    \end{lstlisting}
-    \end{minipage}%
-    \hfill
-    \begin{minipage}[t]{0.48\textwidth}
-    \lstset{linewidth=\linewidth}
-    \begin{lstlisting}[language=Python]
-      def insert(st, s):
-        st.symbols[256+st.nSymbols++] = s
-      
-      def makeTable(st, count1, count2): 
-        # pick top symbols
-        var res = SymbolTable()
-        var cands = []
-        for code1 in range(0,256+st.nSymbols)
-          gain = (
-            st.symbols[code1].len() * 
-            count1[code1]
-          )
-          heapq.heappush(
-            cands,
-            (gain, st.symbols[code1])
-          )
-          for code2 in range(0,256+st.nSymbols)
-            # concatenated symbols
-            s = (
-              st.symbols[code1]
-              + st.symbols[code2]
-            )[:8]
-            gain = s.len()*count2[code1][code2]
-            heapq.heappush(cands, (gain, s))
-        # fill with the best candidates
-        while (res.nSymbols < 255)
-          res.insert(heapq.heappop(cands))
-        return res.makeIndex()
-      
-      def makeIndex(st): 
-        var tmp = (
-          sort(st.symbols[256,256+st.nSymbols])
-        )
-        for i in range(0,st.nSymbols).reverse()
-          var letter = ord(tmp[i][0])
-          st.sIndex[letter] = 256+i
-          st.symbols[256+i] = tmp[i]
-        st.sIndex[256] = 256+st.nSymbols
-        return st
-
-      
-      
-   \end{lstlisting}
-  \end{minipage}
-  \end{adjustbox}
-  
-  \caption{FSST symbol table construction \cite{fsst}.}
+\begin{minipage}{\textwidth}
+  \captionsetup{type=lstlisting}
+  \captionof{lstlisting}{FSST symbol table construction \cite{fsst}.}
   \label{algorithm3}
-\end{figure}
+
+  \vspace{4pt}
+\noindent
+\begin{minipage}[t]{0.48\textwidth}
+\begin{lstlisting}[language=Python,
+    basicstyle=\ttfamily\scriptsize,
+    numbers=left,
+    numberstyle=\tiny,
+    numbersep=4pt,
+    xleftmargin=0pt,
+    linewidth=\linewidth,
+    breaklines=true,
+    aboveskip=0pt,
+    belowskip=0pt,
+    firstnumber=1]
+class SymbolTable:
+  def __init__(st): 
+    st.nSymbols = 0
+    st.sIndex[257] = [0]*256
+    st.symbols[512] = ['']*512
+    for code in range(0,255)
+      st.symbols[code] = chr(code)
+  
+  def findLongestSymbol(st, text):
+    var letter = ord(text[0])
+    for code in range(st.sIndex[letter],st.sIndex[letter+1])
+      if (text.startswith(st.symbols[code]))
+        return code 
+    return letter 
+  
+  def compressCount(st, count1, count2, text):
+    var pos = 0
+    var prev, code = st.findLongestSymbol(text[pos:])
+    while ((pos += st.symbols[code].len()) < text.len())
+      prev = code
+      code = st.findLongestSymbol(text[pos:])
+      count1[code]++ 
+      count2[prev][code]++ 
+      if (code >= 256)
+        nextByte = ord(text[pos])
+        count1[nextByte]++
+        count2[prev][nextByte]++
+
+  def buildSymbolTable(st, text): 
+    var res = SymbolTable()
+    for generation in [1,2,3,4,5]:
+      var count1[512] = [0]*512
+      var count2[512][512] = [count1]*512
+      st.compressCount(
+        res, count1, count2, text
+      )
+      res = st.makeTable(
+        res, count1, count2
+      )
+    return res 
+\end{lstlisting}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.48\textwidth}
+\begin{lstlisting}[language=Python,
+    basicstyle=\ttfamily\scriptsize,
+    numbers=left,
+    numberstyle=\tiny,
+    numbersep=4pt,
+    xleftmargin=0pt,
+    linewidth=\linewidth,
+    breaklines=true,
+    aboveskip=0pt,
+    belowskip=0pt,
+    firstnumber=last]
+def insert(st, s):
+  st.symbols[256+st.nSymbols++] = s
+
+def makeTable(st, count1, count2): 
+  # pick top symbols
+  var res = SymbolTable()
+  var cands = []
+  for code1 in range(0,256+st.nSymbols)
+    gain = (
+      st.symbols[code1].len() * 
+      count1[code1]
+    )
+    heapq.heappush(
+      cands,
+      (gain, st.symbols[code1])
+    )
+    for code2 in range(0,256+st.nSymbols)
+      # concatenated symbols
+      s = (
+        st.symbols[code1]
+        + st.symbols[code2]
+      )[:8]
+      gain = s.len()*count2[code1][code2]
+      heapq.heappush(cands, (gain, s))
+  # fill with the best candidates
+  while (res.nSymbols < 255)
+    res.insert(heapq.heappop(cands))
+  return res.makeIndex()
+
+def makeIndex(st): 
+  var tmp = (
+    sort(st.symbols[256,256+st.nSymbols])
+  )
+  for i in range(0,st.nSymbols).reverse()
+    var letter = ord(tmp[i][0])
+    st.sIndex[letter] = 256+i
+    st.symbols[256+i] = tmp[i]
+  st.sIndex[256] = 256+st.nSymbols
+  return st
+  
+\end{lstlisting}
+\end{minipage}
+\end{minipage}
 
 The \texttt{buildSymbolTable} function is the main component of the algorithm, in which the five iterations over the sample are performed. Two counters,  \texttt{count1} and \texttt{count2}, are used to record symbol frequencies when compressing the text using the previous symbol table. The counter \texttt{count1} tracks individual symbols, while \texttt{count2} records the concatenation of two symbols or the concatenation of a symbol and a literal byte.
 
