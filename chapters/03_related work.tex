@@ -127,7 +127,7 @@ In the original implementation, the number of generations is set to five and the
 \noindent
 \begin{minipage}[t]{0.48\textwidth}
 \begin{lstlisting}[language=Python,
-    basicstyle=\ttfamily\scriptsize,
+    basicstyle=\ttfamily\footnotesize,
     numbers=left,
     numberstyle=\tiny,
     numbersep=4pt,
@@ -147,17 +147,22 @@ class SymbolTable:
   
   def findLongestSymbol(st, text):
     var letter = ord(text[0])
-    for code in range(st.sIndex[letter],st.sIndex[letter+1])
-      if (text.startswith(st.symbols[code]))
+    for code in range(st.sIndex[letter],
+      st.sIndex[letter+1])
+      if(text.startswith(st.symbols[code]))
         return code 
     return letter 
   
-  def compressCount(st, count1, count2, text):
+  def compressCount(st, count1,
+    count2, text):
     var pos = 0
-    var prev, code = st.findLongestSymbol(text[pos:])
-    while ((pos += st.symbols[code].len()) < text.len())
+    var prev, code
+    code = st.findLongestSymbol(text[pos:])
+    while ((pos += st.symbols[code].len()) 
+      < text.len())
       prev = code
-      code = st.findLongestSymbol(text[pos:])
+      code = st.findLongestSymbol(
+        text[pos:])
       count1[code]++ 
       count2[prev][code]++ 
       if (code >= 256)
@@ -167,7 +172,7 @@ class SymbolTable:
 
   def buildSymbolTable(st, text): 
     var res = SymbolTable()
-    for generation in [1,2,3,4,5]:
+    for generation in [1,2,3,4,5]
       var count1[512] = [0]*512
       var count2[512][512] = [count1]*512
       st.compressCount(
@@ -181,7 +186,7 @@ class SymbolTable:
 \end{minipage}\hfill
 \begin{minipage}[t]{0.48\textwidth}
 \begin{lstlisting}[language=Python,
-    basicstyle=\ttfamily\scriptsize,
+    basicstyle=\ttfamily\footnotesize,
     numbers=left,
     numberstyle=\tiny,
     numbersep=4pt,

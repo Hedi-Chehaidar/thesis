@@ -199,16 +199,9 @@ def push_cand(code1: int, code2: int, code3: int, gain: int):
 \end{lstlisting}
 
 As the python implementation in Lst.~\ref{push_cand} shows, the symbol to push is always considered as the concatenation of three symbols and their codes are pushed to the heap along with the gain. Here, the gain is negated because the python \texttt{heapq} module implements a min heap. \texttt{code2} and \texttt{code3} are set to $-1$ denoting their absence, if the symbol to push is not a concatenation or is a concatenation of two symbols. The pruned symbols with negative gains are discarded as discussed earlier.
-\noindent
-\begin{minipage}{\textwidth}
-  \captionsetup{type=lstlisting}
-  \captionof{lstlisting}{Symbol pruning implementation.}
-  \label{pruning}
 
-  \vspace{4pt}
-\noindent
-\begin{minipage}[t]{0.49\textwidth}
-\begin{lstlisting}[aboveskip=0pt, belowskip=0pt, basicstyle=\ttfamily\scriptsize, language=Python]
+\clearpage
+\begin{lstlisting}[basicstyle=\ttfamily\footnotesize, caption={Symbol pruning implementation.}, label={pruning}, language=Python]
 # Fill a new symbol table
 res = SymbolTable()
 seen: set[bytes] = set()  # avoid inserting duplicates
@@ -229,11 +222,6 @@ while res.nSymbols < MAX_REAL_SYMBOLS and heap:
   # prev is the previous symbol table
   L1 = len(prev.symbols[code1])
   L2 = len(prev.symbols[code2])
-\end{lstlisting}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.49\textwidth}
-\captionsetup{type=lstlisting}
-\begin{lstlisting}[firstnumber=last, aboveskip=0pt, belowskip=0pt, basicstyle=\ttfamily\scriptsize, language=Python]
   if code3 == -1: # two-code symbol
     # Update the counts of prefix and suffix symbols
     count1[code1] -= curcnt
@@ -261,8 +249,6 @@ while res.nSymbols < MAX_REAL_SYMBOLS and heap:
     push_cand(code2, code3, -1, L23 * count2[code2][code3])
     
 \end{lstlisting}
-\end{minipage}
-\end{minipage}
 
 The updated \texttt{makeTable} function now constructs the candidates from the \texttt{count1} and \texttt{count2} arrays as usual, but for three-symbol concatenations a loop over the HashMap of \texttt{count3} is added. Then the candidates are pushed with the \texttt{push\_cand} helper function before entering the while loop to choose the symbols of the next symbol table. This loop has now to first reconstruct the popped symbol and its current count from the codes, as shown in Lst.~\ref{pruning}. Then if the symbol has been already pruned, it will be discarded. This check is performed through the comparison of the symbol's current gain with its gain at insertion time into the heap. 
 Next comes the insertion of the symbol to the new symbol table followed by the pruning logic. The \texttt{if} statements that precede some of the \texttt{push\_cand} operations (lines 24, 32, 35, and 42 in Lst.~\ref{pruning}) avoid pushing the same pruned symbol twice into the heap, as only the last push will be valid. This saves the insertion time and also the time of extracting those invalid states of the symbols. Therefore, if some symbol appears as part of the bigger symbol in multiple ways, it will be pushed only once to the heap after all reductions of its count.
