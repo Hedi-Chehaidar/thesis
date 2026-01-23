@@ -3,151 +3,78 @@
 
 \chapter{Evaluation}\label{chapter:evaluation}
 
-In this section we will discuss the improvement of the three introduced contributions on the original FSST algorithm in terms of compression factor across different datasets. The contributions will be also tested against other compression techniques that use FSST, like DICT FSST and FSST+ \cite{fsst_plus_repo}. Then the additional runtime overhead of the improvements will be discussed at the end. 
+In this section we will discuss the improvement of the three introduced contributions on the original FSST algorithm in terms of compression factor across different datasets. The contributions will be also tested against other compression techniques that use FSST, like DICT FSST \cite{dict_fsst} and FSST+ \cite{fsst_plus_repo}. Then the additional runtime overhead of the improvements will be discussed at the end. 
 
 \section{Benchmarking Data}
 
 \subsection{Dbtext}
 
-
+This is the dataset used for benchmarking in the original FSST paper~\cite{fsst}. It includes real-world text data from different sources. The data consists of 23 string columns ranging from 130~KB (city) to around 6~MB (urls) in size. They can be grouped in five categories based on their data nature:
+\begin{itemize}
+  \item machine-readable identifiers: hex, yago, email, wiki, uuid, urls2, and urls.
+  \item human-readable names: firstname, lastname, city, credentials, street, and movies.
+  \item text: faust, hamlet, chinese, japanese, and wikipedia.
+  \item domain-specific codes: genome and location
+  \item TPC-H data: c\_name, l\_comment and ps\_comment
+\end{itemize}
 
 \subsection{NextiaJD}
 
-
+NextiaJD~\cite{nextiajd} has a collection of diverse string columns, dedicated to learning-based research. The selected tables from NextiaJD are:
+\begin{itemize}
+  \item github-issues: it has the largest column of the whole benchmarking data (body) with 32~MB size.
+  \item glassdoor: the table with the most string columns, the majority being urls and path links. 
+  \item Homo\_sapiens.GRCh38.92: mostly duplicate heavy data (identifiers).
+  \item Parking\_Violations\_Issued\_Fiscal\_Year\_2017: containing street names and dates.
+  \item Reddit\_Comments\_7M\_2019: the majority of columns are usernames, but also contains one text column (body) and one column with links (permalink)
+  \item reviews\_detailed: it combines date data with large text data.
+\end{itemize}
 
 \subsection{PublicBIbenchmark}
 
+PublicBIbenchmark is a dataset produced by CWI (Centrum Wiskunde \& Informatica) with data representing real-world business intelligence workloads \cite{publicbibenchmark}. The data selected combine geographical locations, urls with prefix-heavy patterns, and user-generated data in different languages and special characters (hashtags) to test the affect of the improvements with heterogenous data. The tables chosen from this dataset are ``HashTags/Hashtags1'', ``IGlocations2/IGlocations2\_2'', and ``YaleLanguages/YaleLanguages\_1''. 
 
 
 \subsection{CyclicJoinBench}
 
+CyclicJoinBench is a dataset used to evaluate join algorithms on cyclic query graphs~\cite{cyclicjoinbench}. The datasets contains three identical string containing tables regarding content, therefore only one table was used for benchmarking (SNB1-parquet). Most of the string columns of this dataset has short rows featuring names, titles, and locations.
+
 
 \subsection{ClickBench}
 
-
-
-
-
+ClickBench is a dataset developed by ClickHouse~\cite{clickbench}, used to benchmark the performance of over 50 databases on simple analytical workloads. This makes the dataset suitale for the evaluation of compression methods. ClickBench has only three string type columns that were all used for benchmarking: Title, Referer, and URL.
 
 
 \section{Benchmarking Method}
 
-\subsection{Data Selection}
+A filtering process was applied on the selected tables from the datasets mentioned above in order to get string columns suitable for benchmarking the affects of the improvements. The filtering conditions are the same used for benchmarking FSST+, mentioned in the corresponding thesis~\cite{fsst_plus}.
+
+First, each relation is reduced to its first 100~K rows. Then, to eliminate columns with numeric values, the only allowed column type was VARCHAR. Furthermore, only columns having an average row length $\ge 8$ were retained. An exception is the dbtext dataset that was taken fully as is, although it had a column with an average length of 7 (firstname). 
+\newline
+\sparagraph{DICT FSST fairness.}To ensure a fair comparison with DICT FSST, the resulting columns should not be dominated by duplicates. Otherwise, the DICT FSST compression will be mostly influenced by the dictionary encoding, which consists of keeping a dictionary to map each row to its value in a duplicate-free version of the column. The second part of the DICT FSST is the more relevant part for the comparison, as it uses FSST to compress the unique columns, i.e, the contributions of the thesis are only applicable in this part. As a result, only columns whose FSST compression size is not more than twice the size of dictionary encoding are retained. 
+
+The condition used is then $\text{FSST compressed size} \le 2 \times \text{Dictionary encoding size}$. The size of the dictionary is calculated as the sum of the lengths of unique strings and the total size of tha integers used for mapping, according to the SQL query of Lst.~\ref{dict}.
+
+\begin{lstlisting}[language=SQL, caption={SQL query to get dictionary encoding size.}, label={dict}]
+SELECT
+  CAST(
+    COALESCE(length(string_agg(DISTINCT col, '')), 0) -- length of unique strings
+    +
+    (COUNT(col) * CASE -- total number of strings * bytes used to map each string
+        WHEN COUNT(DISTINCT col) = 0 THEN 0
+        ELSE ceil(log2(COUNT(DISTINCT col)) / 8) -- bits / 8 to count bytes
+      END
+    )
+  AS BIGINT) AS total_compressed_size
+  FROM rel
+\end{lstlisting}
 
 
-\subsection{Code Sources}
-
-
-
-
-
-
-
+\noindent
+An additional cndition was applied, that was not used for benchmarking FSST+, setting an upper-bound of 35~MB for the resulting text file of each column, in order to eliminate huge files that skewed the average runtime measure. 
 
 \section{Results}
 
-\subsection{DP approach}
-\label{dp_results}
+\subsection{Ablation Study}
 
 
-
-
-
-
-
-
-
-
-
-
-\begin{comment}
-Citation test~\parencite{latex}.
-
-Acronyms must be added in \texttt{main.tex} and are referenced using macros. The first occurrence is automatically replaced with the long version of the acronym, while all subsequent usages use the abbreviation.
-
-E.g. \texttt{\textbackslash ac\{TUM\}, \textbackslash ac\{TUM\}} $\Rightarrow$ \ac{TUM}, \ac{TUM}
-
-For more details, see the documentation of the \texttt{acronym} package\footnote{\url{https://ctan.org/pkg/acronym}}.
-\subsection{Subsection}
-
-See~\autoref{tab:sample}, \autoref{fig:sample-drawing}, \autoref{fig:sample-plot}, \autoref{fig:sample-listing}.
-
-\begin{table}[htpb]
-  \caption[Example table]{An example for a simple table.}\label{tab:sample}
-  \centering
-  \begin{tabular}{l l l l}
-    \toprule
-      A & B & C & D \\
-    \midrule
-      1 & 2 & 1 & 2 \\
-      2 & 3 & 2 & 3 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\begin{figure}[htpb]
-  \centering
-  % This should probably go into a file in figures/
-  \begin{tikzpicture}[node distance=3cm]
-    \node (R0) {$R_1$};
-    \node (R1) [right of=R0] {$R_2$};
-    \node (R2) [below of=R1] {$R_4$};
-    \node (R3) [below of=R0] {$R_3$};
-    \node (R4) [right of=R1] {$R_5$};
-
-    \path[every node]
-      (R0) edge (R1)
-      (R0) edge (R3)
-      (R3) edge (R2)
-      (R2) edge (R1)
-      (R1) edge (R4);
-  \end{tikzpicture}
-  \caption[Example drawing]{An example for a simple drawing.}\label{fig:sample-drawing}
-\end{figure}
-
-\begin{figure}[htpb]
-  \centering
-
-  \pgfplotstableset{col sep=&, row sep=\\}
-  % This should probably go into a file in data/
-  \pgfplotstableread{
-    a & b    \\
-    1 & 1000 \\
-    2 & 1500 \\
-    3 & 1600 \\
-  }\exampleA
-  \pgfplotstableread{
-    a & b    \\
-    1 & 1200 \\
-    2 & 800 \\
-    3 & 1400 \\
-  }\exampleB
-  % This should probably go into a file in figures/
-  \begin{tikzpicture}
-    \begin{axis}[
-        ymin=0,
-        legend style={legend pos=south east},
-        grid,
-        thick,
-        ylabel=Y,
-        xlabel=X
-      ]
-      \addplot table[x=a, y=b]{\exampleA};
-      \addlegendentry{Example A}
-      \addplot table[x=a, y=b]{\exampleB};
-      \addlegendentry{Example B}
-    \end{axis}
-  \end{tikzpicture}
-  \caption[Example plot]{An example for a simple plot.}\label{fig:sample-plot}
-\end{figure}
-
-\begin{figure}[htpb]
-  \centering
-  \begin{tabular}{c}
-  \begin{lstlisting}[language=SQL]
-    SELECT * FROM tbl WHERE tbl.str = "str"
-  \end{lstlisting}
-  \end{tabular}
-  \caption[Example listing]{An example for a source code listing.}\label{fig:sample-listing}
-\end{figure}
-\end{comment}
