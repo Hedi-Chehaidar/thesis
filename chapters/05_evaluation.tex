@@ -3,7 +3,7 @@
 
 \chapter{Evaluation}\label{chapter:evaluation}
 
-In this section we will discuss the improvement of the three introduced contributions on the original FSST algorithm in terms of compression factor across different datasets. The contributions will be also tested against other compression techniques that use FSST, like DICT FSST \cite{dict_fsst} and FSST+ \cite{fsst_plus_repo}. Then the additional runtime overhead of the improvements will be discussed at the end. 
+In this section we will discuss the improvement of the three introduced contributions on the original FSST algorithm in terms of compression factor and runtime across different datasets. The contributions will be also tested against other compression techniques that use FSST, like DICT FSST \cite{dict_fsst} and FSST+ \cite{fsst_plus_repo}.
 
 \section{Benchmarking Data}
 
@@ -50,6 +50,8 @@ ClickBench is a dataset developed by ClickHouse~\cite{clickbench}, used to bench
 A filtering process was applied on the selected tables from the datasets mentioned above in order to get string columns suitable for benchmarking the affects of the improvements. The filtering conditions are the same used for benchmarking FSST+, mentioned in the corresponding thesis~\cite{fsst_plus}.
 
 First, each relation is reduced to its first 100~K rows. Then, to eliminate columns with numeric values, the only allowed column type was VARCHAR. Furthermore, only columns having an average row length $\ge 8$ were retained. An exception is the dbtext dataset that was taken fully as is, although it had a column with an average length of 7 (firstname). 
+
+An additional cndition was applied, that was not used for benchmarking FSST+, setting an upper-bound of 35~MB for the resulting text file of each column, in order to eliminate huge files (outliers) that skewed the average runtime measure. 
 \newline
 \sparagraph{DICT FSST fairness.}To ensure a fair comparison with DICT FSST, the resulting columns should not be dominated by duplicates. Otherwise, the DICT FSST compression will be mostly influenced by the dictionary encoding, which consists of keeping a dictionary to map each row to its value in a duplicate-free version of the column. The second part of the DICT FSST is the more relevant part for the comparison, as it uses FSST to compress the unique columns, i.e, the contributions of the thesis are only applicable in this part. As a result, only columns whose FSST compression size is not more than twice the size of dictionary encoding are retained. 
 
@@ -70,11 +72,50 @@ SELECT
 \end{lstlisting}
 
 
-\noindent
-An additional cndition was applied, that was not used for benchmarking FSST+, setting an upper-bound of 35~MB for the resulting text file of each column, in order to eliminate huge files that skewed the average runtime measure. 
-
 \section{Results}
 
 \subsection{Ablation Study}
 
+We are going to discuss the effect of the contributions of this thesis (DP, third counter, and pruning) on the FSST algorithm regarding compression factor (CF). The resulting codebase~\cite{btrfsst_repo} is an extension of the original FSST code~\cite{fsst_repo}, allowing the adjustment of the included imrovements with command line options as follows:
 
+\begin{itemize}
+  \item no options : Exactly FSST will be run
+  \item --dp-train : The DP function will be used for building the symbol table instead of the greedy \texttt{findLongestS>ymbol}
+  \item --dp-encode: The DP function will be used for compressing the whole corpus after constructing the symbol table.
+  \item --triples  : \texttt{compressCount} will use three counters instead of two.
+  \item --prune    : Pruning will be used in the filling of the new symbol table in each generation in \texttt{makeTable}.
+\end{itemize}
+
+Running the basecode with with any configuration different than FSST (i.e, with at least one of the options above) will discard many of the heuristics used by the original FSST code. These heuristics include a $\times 8$ boost to the gain of one-byte symbols, using fractions of the sample incrementally across generations instead of training on the whole sample for the 5 generations, and setting an entry threshold for the count of the symbols before pushing them to the heap of candidates, that depends on the fraction used of the sample.
+
+The program running with all the above mentioned options will be called ``BtrFSST'', the name of all improvements combined with FSST as a base.
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=1\textwidth]{figures/cf\_combined}
+  \caption{Effect of improvements on the compression factor over all datasets combined.}
+  \label{cf_combined}
+\end{figure}
+
+Figure~\ref{cf_combined} shows the CF of all the columns of the used datasets over different configurations. The left side adds the improvements, affecting only the symbol table construction (the compression is greedy). The right side always includes DP on compression and then adds the contributions gradually in the same way.
+
+The overall CF average improved from FSST to BtrFSST by 8.3\%. Without including DP on compression, the contributions improved the average CF by 3.2\% by solely improving the symbol table construction, while the improvement was by 3.4\% when DP was used on compression. This shows that not using the greedy \texttt{findLongestSymbol} at all has a stronger impact on the overall CF. The implementation backs this claim, as when DP is used on both table construction and compression, hshing will be dropped for symbols. That means, in that case all symbols selected will be used in the symbol table, without the possibility for collisions, which was certain for symbols sharing the first three bytes, the key for the hash function in FSST.  
+
+The DP approach in the compression has the highest effect of the average CF with an improvement of 4.7\% over FSST with greedy encoding. Then comes DP on table construction (2.4\% with DP on compression and 2.5\% without), which shows that the greedy approach was the main reason behind the sub-optimal CF of the original FSST. ALthough adding a third counter and using symbol pruning during symbol table filling did not have significant effects on the overall CF means, they can be still helpful for some workloads. We can see, in the boxenplot for adding a third counter when using DP on training and encoding (right side), that this configuration had the highest compression factors for some columns.
+\newline
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=1\textwidth]{figures/time\_combined}
+  \caption{Effect of improvements on the runtime over all datasets combined.}
+  \label{time_combined}
+\end{figure}
+
+\noindent
+Figure~\ref{time_combined} shows the runtimes with the different configurations over all columns. The machine used for this benchmarking is a laptop equipped with an AMD Ryzen 9 CPU with 8 cores and 16 threads, operating at a base frequency of 3.3~GHz. The system uses 16~GB of RAM and an integrated AMD Radeon Graphics, with storage being provided by an NVMe SSD. All benchmarks were executed with the device connected to external power and configured in high-performance mode. No SIMD code was executed, meaning that the compression method used for original FSST was the scalar one and not with AVX-512, which should be $\times 2.5$ faster~\cite{fsst}. 
+
+The benchmarks show that BtrFSST is on average almost twice slower than FSST. The addeed runtime overhead comes primarily from DP on encdoing, which alone increased average runtime by 80\%. All contributions affecting the symbol table construction made the algorithm 31.8\% slower than FSST, but only 10.2\% comparing to FSST with DP on encoding. This proves that the bottleneck is compression, especially with columns that are significantly larger than the sample size (16~KB). 
+
+\subsection{Special Cases}
+
+We will dive deeper into the CF comparison of FSST and BtrFSST (all contributions on table construction and encoding), by exploring the best and worst columns for both methods.
