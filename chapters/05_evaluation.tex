@@ -119,3 +119,28 @@ The benchmarks show that BtrFSST is on average almost twice slower than FSST. Th
 \subsection{Special Cases}
 
 We will dive deeper into the CF comparison of FSST and BtrFSST (all contributions on table construction and encoding), by exploring the best and worst columns for both methods.
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.8\textwidth]{figures/CF\_worst}
+  \caption{Worst performance of BtrFSST against FSST.}
+  \label{cf_worst}
+\end{figure}
+
+BtrFSST performed worse than FSST on 17 files from a total of 120 files from the whole datasets combined (14.1\%) with only 3 files having at least 5.3\% worse compression factors.
+Figure~\ref{cf_worst} shows the significant columns where BtrFSST performed worse than FSST. The first column is the smallest one with just 71 rows and a total size of 1~KB. Noticing that also FSST with just DP on encoding had a worse compression factor (Figure~\ref{dp_combined}) explains that this difference is purely due to the heuristics used in the original FSST code, which were discarded for every other configuration. We can conclude that those heuristics only work for very small columns (CF is better on average without them even for FSST).
+
+The second and third columns come from the same table ``NextiaJD/Homo\_sapiens.GRCh38.92'' and they exhibit redundancies over small blocks of lengths roughly from 5 to 15 rows each. A similar column to the third one, that is also from the same table, is ``protein\_id'', which showed a countrary effect, i.e., BtrFSST had better CF (3.28 to 3.17). A close look into the changments of CF across configurations shows that ``ccds\_id'' was negatively affected when both adding DP on training and pruning (with DP on encoding), while ``transcript'' showed a drop in the CF after adding the third counter and pruning. A possible explanation is the problem of the sampling mechanism that was not helpful for some of the contributions, leading to choosing a set of symbols that does not generalize well over the whole corpus and making a greedy approach supirior.
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.8\textwidth]{figures/CF\_best}
+  \caption{Best performance of BtrFSST against FSST.}
+  \label{cf_best}
+\end{figure}
+
+
+BtrFSST performed significantly better than FSST over the majority of the columns reaching an improvement of 47.3\% on column ``Parking\_Violations\_Issued\_Fiscal\_Year\_2017::Issue\_Date'' from the NextiaJD dataset. Figure~\ref{cf_best} shows the best three files for the contributions. The commun factor between those columns is the presence of many commun substrings across the rows, either through redundancies of the whole strings over a long streak of rows (last two columns) or through sharing suffixes like in dates.
+
+\subsection{Dict FSST \& FSST+}
+%TODO: compare with dict fsst(+)  
