@@ -3,5 +3,26 @@
 
 \chapter{Discussion \& Future Work}\label{chapter:discussion & future work}
 
+\sparagraph{Runtime Improvement.} As discussed in the previous section, BtrFSST is almost twice as slow as the original FSST algorithm. This slowdown comes mainly from the DP on compression, which constitutes the bottleneck of the compression algorithm. Iterating over the whole corpus and computing the DP value at each position with at most 8 operations (for symbol search) introduced a significant overhead. 
 
+An alternative function that we tried during the thesis used a hybrid approach: when the last 8 DP values are close (MAX - MIN $\le$ THRESHOLD), use the greedy \texttt{findLongestSymbol} and consider it the optimal symbol at the current position. Unfortunately, keeping the minimum and the maximum of the last seen DP values did not allow speeding up the function noticeably, although that was done in constant time by maintaining two \texttt{deques}. Furthermore, setting values for the threshold $\ge 2$ dropped the CF significantly, rolling back most of the improvement achieved through the contributions.
+
+Also avoiding branches in the symbol search did not bring any speedup, as the trie search should break with high probability after the first two to three operations, as most of the symbols have lengths of two and three bytes. 
+
+A possible area of improvement can be optimizing the symbol search with SIMD operations or better ways of storing the symbols. An immediate improvement can be also optimizing the heap structure used for storing candidate symbols in \texttt{makeTable}, as the pruning mechanism can make many symbols invalid and therefore wasting operations on extracting and discarding them.
+
+
+
+
+\sparagraph{Pruning Optimization.} The pruning mechanism itself has a significant potential for improvement. The simple subtraction of counts of bigger symbols from their sub-symbols needs to be further investigated. The inclusion-exclusion method discussed in Section~\ref{section:pruning} does not work currently because of the way the concatenations are made in \texttt{compressCount}. Therefore, considering another concatenation schema may allow for a perfect pruning logic which chooses the best matching symbols and reduces conflicts as much as possible given the set of candidate symbols. 
+
+The gain heuristic plays an important role, being the key for symbol evaluation and selection. Making the gain a dynamic function instead of a static one would remove the need for a pruning mechanism and improve the symbol selection process significantly. 
+
+
+
+\sparagraph{Global vs. Local Optimizations.} The improvements on symbol table construction, discussed in this thesis, provide better alternatives for symbol selection methods within each generation, but still relies on the same concatenation logic to improve the symbol table between generations. Adding a third counter helps the algorithm to converge faster by favoring longer symbols, but the converging path is still based on the same logic as the original FSST algorithm. These improvements are therefore mainly local and do not change the shape of the symbol table construction globally. 
+
+A straightforward approach for creating a symbol table with a single pass over the data was tried during the thesis. A Breadth First Search (BFS) algorithm was first employed. The sample data was modeled as a graph with each position as a node and the compression size as the distance to the last node that must be minimized. The state is then the position in the data and the current symbol table to build. Transitions can be made by using a symbol from the symbol table (matching a prefix), adding a symbol to the table and using it, or escaping the current byte. As escaping adds two bytes to the compressed size, an intermediate state was added to split the escaping step into two one-byte steps and be able to apply the usual BFS. This brute force idea is clearly unfeasible due to enormous memory requirements. We experimented with reducing the memory footprint by hashing the state and limiting the maximal number of symbols, but the compression factor suffered immediately after any reduction in the state. 
+
+This thesis kept therefore the core logic of FSST table construction and introduced improvements within its initial functions. Other attempts, that do not have to be just brute force, can be studied further to make global optimizations instead of or in addition to the learning process of the symbol table across multiple generations. 
 

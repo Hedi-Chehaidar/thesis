@@ -168,7 +168,7 @@ The code snippet in Lst.~\ref{count3} shows the \texttt{count3} implementation i
 
 
 \section{Symbol Pruning}
-
+\label{section:pruning}
 Recall the baseline symbol selection in Lst.~\ref{algorithm3}. The \texttt{makeTable} function greedily takes the first 255 symbols in terms of static gain, without taking into account the conflicts between those symbols, and leaving most of the candidates in the heap unchosen. Especially that now the number of candidates grew by around $\times 1.5$ due to the third frequency counter, there is more potential to miss better symbols. Some of the chosen symbols may be a substring of other bigger symbols and therefore conflicting with them. It means that in \texttt{compressCount} of the next generation, the bigger symbol is most likely to be chosen over the smaller one. This possibility is higher when the smaller one is a prefix and it is certain when using \texttt{findLongestSymbol} instead of the DP function.
 Then the new count of the smaller symbol will be smaller after the next generation than its current count. Therefore, one role of a generation, in addition to discovering new symbol combinations through concatenations, is correcting this overestimation in the counts of smaller symbols.
 
