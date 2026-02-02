@@ -52,6 +52,19 @@ The two options to choose from are the same as in the previous formula, but cand
 \noindent
 This DP problem is a segmentation problem, where each segment is either a symbol, the escape code or a raw byte of the string that must follow the escape code. All segments have the same cost and we want to minimize the number of segments used to compress a given text. The first formula builds a bottom-up solution, while the second formula builds a top-down solution. Both formulations yield the same optimal cost for the whole text, as they solve the same problem. 
 
+\subsection{Example}
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=1\textwidth]{figures/dp\_example}
+  \caption{Example DP compression.}
+  \label{dp_example}
+\end{figure}
+
+Figure~\ref{dp_example} shows an example for compressing a text using the dp formula of Eq.~\eqref{formula2}. \texttt{dp[0]} tells that we needed 5 bytes to compress the text given the available symbols. \texttt{opt} contains one best symbol that yields to the best compression of the suffix beginning from the corresponding position. The values for both tables are filled backward (from right to left) simultaneously according to the used formula. The arrows show the steps to recover the symbols used for compression needed for counting frequencies in the \texttt{compressCount} function.
+
+The greedy approach of the \texttt{findLongestSymbol} function would need 8 bytes to compress the same text with the same set of symbols. A difference can be seen in the first chosen symbol: \texttt{findLongestSymbol} would choose ``ac'' as the first symbol, which will lead to skipping the next byte as there are no symbols beginning with ``b''. On the other hand, the dp function chooses the symbol ``a'' which is not the longest possible symbol to choose, but it allows for the smallest final compression size.      
+
 \subsection{Implementation}
 
 The code in Lst.~\ref{dp_python} represents the python implementation of the DP function \texttt{st.buildDP} that fills both the DP and the \texttt{opt} tables in a single pass.
@@ -174,6 +187,17 @@ Then the new count of the smaller symbol will be smaller after the next generati
 
 Symbol pruning is one step forward to this goal. By partially correcting the counts of symbols that are parts of other bigger symbols, we save time in the next generation and add more variety to the symbols chosen in the symbol table.
 \newline
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=1\textwidth]{figures/no\_pruning}
+  \caption{Example of symbol selection without pruning.}
+  \label{no_pruning}
+\end{figure}
+
+\sparagraph{Example without Pruning.} Figure~\ref{no_pruning} shows the symbol selection process without pruning. The previous symbol table used for counting had only three symbols: ``a'', ``b'', and ``c''. The frequencies in the table \texttt{count} of the used symbols for compression and their concatenations and the corresponding gains (\texttt{frequency} $\times$ \texttt{length}) are computed by \texttt{compressCount}. We did not include double concatentations (\texttt{count3}) for simplicity.
+
+Assuming that the symbol table has a capacity of 5 symbols, \texttt{maketable} chooses the 5 symbols having the highest static gains, including the one-byte symbols ``a'' and ``b''. Pruning those one-byte symbols and choosing ``ba'' and ``ca'' insetad would result in the best possible next symbol table, which will allow to compress the text in 5 bytes by using all two-byte symbols. Now we explain the reason of this suboptimal symbol selection and the suggested solution for it.
 
 \noindent
 When choosing a symbol in \texttt{makeTable} that is formed by a concatenation of two or three symbols, we know that we overestimated the counts for the symbols that were used in the concatenation, especially if they are not yet chosen into the symbol table (i.e., they have less gain).
