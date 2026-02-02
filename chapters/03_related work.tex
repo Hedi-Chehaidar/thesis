@@ -20,7 +20,7 @@
   xleftmargin=2em
 }
 \section{Block-Based Compressors}
-General-purpose block-based compression algorithms are widely used across storage systems, operating systems, and data processing pipelines due to their ability to achieve high compression ratios on diverse data types. These compressors operate by partitioning the input data into blocks of fixed or variable size and compressing each block independently. This design enables parallel compression and decompression, robust error containment, and adaptability to different data distributions.
+General-purpose block-based compression algorithms are widely used across storage systems, operating systems, and data processing pipelines due to their ability to achieve high compression factors on diverse data types. These compressors operate by partitioning the input data into blocks of fixed or variable size and compressing each block independently. This design enables parallel compression and decompression, robust error containment, and adaptability to different data distributions.
 
 \subsection{LZ4}
 One of the most prominent examples of such algorithms is LZ4~\cite{lz4}, a lightweight compressor based on the Lempel-Ziv 77 (LZ77) family of dictionary compression techniques.
@@ -30,14 +30,14 @@ What distinguishes LZ4 is that during compression a hash table is used to quickl
 
 LZ4 decompression is very similar to just performing memory copy ('memcpy') operations, making it bounded by memory bandwidth with speed of multiple GB/s per core, typically reaching RAM speed limits on multi-core systems.
  
-LZ4 prioritizes decompression speed over compression ratio, making it suitable for performance-critical workloads where fast data access is required. It achieves compression by identifying repeated byte sequences within a block and encoding them as references to earlier occurrences.
+LZ4 prioritizes decompression speed over compression factors, making it suitable for performance-critical workloads where fast data access is required. It achieves compression by identifying repeated byte sequences within a block and encoding them as references to earlier occurrences.
 
 While LZ4 offers very fast decompression, its relatively small window size and simple matching strategy limit its ability to exploit longer-range redundancies, especially across block boundaries.
 
 \subsection{Zstd}
-Zstandard (Zstd)~\cite{zstd} represents a more advanced block-based compression approach developed by Facebook that balances compression ratio and performance. Zstandard combines LZ-style dictionary matching with entropy coding and supports large compression windows, allowing it to capture long-distance repetitions within a block.
+Zstandard (Zstd)~\cite{zstd} represents a more advanced block-based compression approach developed by Facebook that balances compression factor and performance. Zstandard combines LZ-style dictionary matching with entropy coding and supports large compression windows, allowing it to capture long-distance repetitions within a block.
 Zstd encodes unmatched byte sequences, called literal bytes, in addition to the offset and length attributes of match pairs using Finite State Entropy (FSE) and Huffman coding techniques.
-As a result, Zstandard often achieves significantly higher compression ratios than lightweight compressors such as LZ4, particularly on structured or repetitive data. However, this improved compression comes at the cost of increased decompression complexity and reduced random-access efficiency, as individual values typically cannot be decompressed without processing the surrounding block.
+As a result, Zstandard often achieves significantly higher compression factors than lightweight compressors such as LZ4, particularly on structured or repetitive data. However, this improved compression comes at the cost of increased decompression complexity and reduced random-access efficiency, as individual values typically cannot be decompressed without processing the surrounding block.
 
 %table with comparison
 \begin{comment}

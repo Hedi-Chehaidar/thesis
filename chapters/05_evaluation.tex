@@ -169,7 +169,7 @@ The distribution proves that BtrFSST is the best configuration, although a notic
   \label{cf_dict}
 \end{figure}
 
-Figure~\ref{cf_dict} shows the effect of the contributions on the Dict FSST compression. The filtering of the dataset resulted in a moderate CF improvement from the original Dict FSST algorithm, showing a 6.3\% higher average compression ratio than FSST.
+Figure~\ref{cf_dict} shows the effect of the contributions on the Dict FSST compression. The filtering of the dataset resulted in a moderate CF improvement from the original Dict FSST algorithm, showing a 6.3\% higher average compression factor than FSST.
 
 Both FSST and BtrFSST benefit from duplications in the column data, by using longer symbols to compress repeating strings. Which is not the case for the second phase of Dict FSST, where the columns to compress are duplicate-free. This explains the dropped effect of BtrFSST on Dict FSST (3.4\% compared to 9.6\% on FSST), regarding the average compression factor.
 
