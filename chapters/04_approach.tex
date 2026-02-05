@@ -64,10 +64,10 @@ The greedy approach of the \texttt{findLongestSymbol} function would need 8 byte
 
 \subsection{Implementation}
 
-The code in Lst.~\ref{dp_python} represents the python implementation of the DP function \texttt{st.buildDP} that fills both the DP and the \texttt{opt} tables in a single pass.
 
 \begin{lstlisting}[language=Python, caption={DP construction for \texttt{dp} and \texttt{opt} implementing Eq.~\eqref{formula2}.}, label={dp_python}]
-n = len(data) # data is the given text to encode, or to use for compressCount
+n = len(data) 
+# data is the given text to encode, or to use for compressCount
 self.dp = [0] * (n+1)
 self.opt = [0] * n
 for i in reversed(range(n)):
@@ -87,6 +87,8 @@ for i in reversed(range(n)):
       self.dp[i] = 1 + self.dp[i + L]
       self.opt[i] = code
 \end{lstlisting}
+
+The code in Lst.~\ref{dp_python} represents the python implementation of the DP function \texttt{st.buildDP} that fills both the DP and the \texttt{opt} tables in a single pass.
 
 As the code shows, the DP table is filled from $n$ to 0 in descending order, where for each position other than $n$ the DP value is initialized with the corresponding value for the option of escaping the current byte. Then the inner loop iterates over the candidate symbols that begin with the current byte and match the next chunk of the text \texttt{data}.
 This code uses the \texttt{st.sIndex} table, whose construction was shown in Lst.~\ref{algorithm3}. As a result, the iteration over the symbols is in decreasing order of their lengths. As a tie-breaker between symbols that yield the same DP value, this implementation chooses a symbol with the highest length (i.e., it occurs first in the iteration), thus the use of ``>'' instead of ``$\ge$'' in the \texttt{if} statement for updating the DP and \texttt{opt} tables (line 15). There is an exception to this case, when choosing to escape the byte also yields the smallest DP value, then no symbol will be chosen.
@@ -119,7 +121,8 @@ for (int off = 0; off < limit; ++off) {
   int code = trie[node].symbolCode;
   if (code != -1) {
     u32 L = off + 1;
-    u32 cost = 1 + dpCost[i + L]; // real symbol always emits 1 byte
+    // real symbol always emits 1 byte
+    u32 cost = 1 + dpCost[i + L]; 
     if (cost <= bestCost) {
       bestCost = cost;
       bestCode = code;
@@ -148,7 +151,7 @@ Counting triples of symbols will make converging the symbol table faster, and wi
 The function \texttt{makeTable} should also consider all possible three-symbol concatenations as potential candidates and push them to the heap, with the gain being calculated as usual. 
 
 Storing \texttt{count3} as a 3-dimensional table, analogous to \texttt{count1} and \texttt{count2}, would be highly inefficient: it would require $512^{3}$ entries and iterating over all three-symbol concatenations will be extremely slow. Noticing that we only need to consider triples having non-zero counts (i.e., they actually appear in the sample compression) makes it possible to store the triples in a hash map. The size of \texttt{count3} will be then linear to the sample size, same as \texttt{count1} and \texttt{count2}.
-
+\clearpage
 
 
 \begin{lstlisting}[language=C++, caption={Count3 structure.}, label={count3}]
@@ -162,7 +165,7 @@ struct Count3 {
     else it->second++;
   }
   u16 get(u16 a, u16 b, u16 c) const {
-    auto it = m.find(pack3(a,b,c));
+    auto it = m.find(pack3(a, b, c));
     return it == m.end() ? 0 : it->second;
   }
 };
@@ -220,9 +223,9 @@ As there was no noticeable benefit from this pruning direction in terms of compr
 
 \begin{lstlisting}[language=Python, caption={Implementation of pushing candidates into the heap.}, label={push_cand}]
   def push_cand(code1: int, code2: int, code3: int, gain: int):
-  if gain <= 0:
-  return
-  heapq.heappush(heap, (-gain, code1, code2, code3))
+    if gain <= 0:
+      return
+    heapq.heappush(heap, (-gain, code1, code2, code3))
 \end{lstlisting}
 
 \sparagraph{Heap Initialization.} As the python implementation in Lst.~\ref{push_cand} shows, the symbol to push is always considered as the concatenation of three symbols and their codes are pushed to the heap along with the gain. Here, the gain is negated because the python \texttt{heapq} module implements a min heap. If the symbol to push is not a concatenation or is a concatenation of two symbols, \texttt{code2} and \texttt{code3} are set to $-1$ denoting their absence. The pruned symbols with non-positive gains are discarded as discussed earlier.

@@ -43,32 +43,33 @@ Efficient algorithmic design relies not only on the choice of optimization strat
 A max heap is a complete binary tree-based data structure that maintains the heap property: the key of each node is greater than or equal to the keys of its children. As a result, the maximum element is always stored at the root of the heap.
 
 The primary operations supported by a max heap include insertion, extraction of the maximum element, and key updates. Each of these operations can be performed in logarithmic time with respect to the number of elements in the heap. This efficiency makes max heaps particularly well suited for priority-based selection tasks, where the most valuable or promising element must be accessed repeatedly.
-\newline
+\clearpage
 
-\sparagraph{Example.} The max heap below stores the following data: \{(42, ``fs''), (35, ``comp''), (30, ``str''), (18, ``db''), (15, ``zip''), (10, ``io'')\}. These (int, string) pairs can represent gains and symbols respectively in the context of FSST, where the gain is a heuristic to measure how good a symbol is. Storing the information in this format allows for the symbol with the highest gain to be selected first from the max heap with the 'pop' operation, extracting the element in the root node.   
 
 \begin{figure}[h]
-\centering
-\begin{tikzpicture}[
-  level distance=1.2cm,
-  level 1/.style={sibling distance=4cm},
-  level 2/.style={sibling distance=2cm},
-  every node/.style={draw, rectangle, rounded corners, align=center}
-]
-
-\node {(42, fs)}
-  child {node {(35, comp)}
+  \centering
+  \begin{tikzpicture}[
+    level distance=1.2cm,
+    level 1/.style={sibling distance=4cm},
+    level 2/.style={sibling distance=2cm},
+    every node/.style={draw, rectangle, rounded corners, align=center}
+    ]
+    
+    \node {(42, fs)}
+    child {node {(35, comp)}
     child {node {(18, db)}}
     child {node {(15, zip)}}
-  }
-  child {node {(30, str)}
+    }
+    child {node {(30, str)}
     child {node {(10, io)}}
-  };
-
-\end{tikzpicture}
-\caption{Initial max heap.}
-\label{maxheap-initial}
+    };
+    
+  \end{tikzpicture}
+  \caption{Initial max heap.}
+  \label{maxheap-initial}
 \end{figure}
+
+\sparagraph{Example.} The max heap from the example above stores the following data: \{(42, ``fs''), (35, ``comp''), (30, ``str''), (18, ``db''), (15, ``zip''), (10, ``io'')\}. These (int, string) pairs can represent gains and symbols respectively in the context of FSST, where the gain is a heuristic to measure how good a symbol is. Storing the information in this format allows for the symbol with the highest gain to be selected first from the max heap with the 'pop' operation, extracting the element in the root node.   
 
 As the figure shows, each node has a higher key than its children. In this case the key comparison occurs between the integers (the first element of the pair) then between the strings in case of a tie. 
 
@@ -128,42 +129,42 @@ In the context of algorithmic optimization, max heaps are often used to manage c
 A trie, also known as a prefix tree, is a tree-based data structure used to store and retrieve strings efficiently by exploiting their shared prefixes. Each node in a trie represents a prefix of one or more strings, and edges correspond to individual characters or bytes. Strings are represented by paths from the root to terminal nodes which can also store other data related to the strings (like mappings).
 
 Tries provide efficient operations for prefix-based queries, insertion, and lookup, all of which can be performed in time proportional to the length of the string rather than the number of stored strings. This makes them particularly suitable for applications involving multiple search operations for strings with commun prefixes.
-\newline
 
-\sparagraph{Example.} The following trie stores the 5 strings ``fs'', ``fst'', ``db'', ``dbms'', and ``zip'' with a mapping for each string as an integer stored in the corresponding terminal node. The strings stored can be interpreted as the symbols of a symbol table and the integers as the corresponding codes (one code for each symbol) in the context of FSST. Details will follow in next sections.
 
 \begin{figure}[h]
-\centering
-\begin{tikzpicture}[
-  level distance=1.2cm,
-  level 1/.style={sibling distance=4cm},
-  level 2/.style={sibling distance=2cm},
-  level 3/.style={sibling distance=1.5cm},
-  every node/.style={draw, circle, minimum size=7mm, inner sep=1pt, align=center},
-  terminal/.style={shape=rectangle, draw, rounded corners, fill=gray!15, align=center}
-]
-\node[draw=none, inner sep=0, minimum size=0] {} % root
-  child {node {f}
+  \centering
+  \begin{tikzpicture}[
+    level distance=1.2cm,
+    level 1/.style={sibling distance=4cm},
+    level 2/.style={sibling distance=2cm},
+    level 3/.style={sibling distance=1.5cm},
+    every node/.style={draw, circle, minimum size=7mm, inner sep=1pt, align=center},
+    terminal/.style={shape=rectangle, draw, rounded corners, fill=gray!15, align=center}
+    ]
+    \node[draw=none, inner sep=0, minimum size=0] {} % root
+    child {node {f}
     child {node[terminal] {s\\\scriptsize(42)}
-      child {node[terminal] {t\\\scriptsize(38)}}
+    child {node[terminal] {t\\\scriptsize(38)}}
     }
-  }
-  child {node {d}
+    }
+    child {node {d}
     child {node[terminal] {b\\\scriptsize(18)}
-      child {node {m}
-        child {node[terminal] {s\\\scriptsize(9)}}
-      }
+    child {node {m}
+    child {node[terminal] {s\\\scriptsize(9)}}
     }
-  }
-  child {node {z}
+    }
+    }
+    child {node {z}
     child {node {i}
-      child {node[terminal] {p\\\scriptsize(15)}}
+    child {node[terminal] {p\\\scriptsize(15)}}
     }
-  };
-\end{tikzpicture}
-\caption{Example trie storing short strings.}
-\label{trie-example}
+    };
+  \end{tikzpicture}
+  \caption{Example trie storing short strings.}
+  \label{trie-example}
 \end{figure}
+
+\sparagraph{Example.} The trie from the example above stores the 5 strings ``fs'', ``fst'', ``db'', ``dbms'', and ``zip'' with a mapping for each string as an integer stored in the corresponding terminal node. The strings stored can be interpreted as the symbols of a symbol table and the integers as the corresponding codes (one code for each symbol) in the context of FSST. Details will follow in next sections.
 
 As the trie shows, terminal nodes (gray nodes) mark the end of a symbol and contain the corresponding code. A symbol can be searched by a traversal of the trie from the root to the terminal node. Each edge corresponds to the next character in the symbol search.
 

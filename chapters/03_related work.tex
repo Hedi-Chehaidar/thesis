@@ -28,11 +28,11 @@ The general LZ77 technique works by scanning an input block (usually 128~KB), de
 
 What distinguishes LZ4 is that during compression a hash table is used to quickly identify matches in the input and greedily accepting the first match found. This approach minimizes CPU usage, providing compression speed > 500 MB/s per core.
 
-LZ4 decompression is very similar to just performing memory copy ('memcpy') operations, making it bounded by memory bandwidth with speed of multiple GB/s per core, typically reaching RAM speed limits on multi-core systems.
+LZ4 decompression is close to just performing memory copy ('memcpy') operations, making it bounded by memory bandwidth with speed of multiple GB/s per core, typically reaching RAM speed limits on multi-core systems.
  
 LZ4 prioritizes decompression speed over compression factors, making it suitable for performance-critical workloads where fast data access is required. It achieves compression by identifying repeated byte sequences within a block and encoding them as references to earlier occurrences.
 
-While LZ4 offers very fast decompression, its relatively small window size and simple matching strategy limit its ability to exploit longer-range redundancies, especially across block boundaries.
+While LZ4 offers fast decompression, its relatively small window size and simple matching strategy limit its ability to exploit longer-range redundancies, especially across block boundaries.
 
 \subsection{Zstd}
 Zstandard (Zstd)~\cite{zstd} represents a more advanced block-based compression approach developed by Facebook that balances compression factor and performance. Zstandard combines LZ-style dictionary matching with entropy coding and supports large compression windows, allowing it to capture long-distance repetitions within a block.
@@ -86,7 +86,7 @@ Individual strings in databases are typically not larger than 200 bytes, with th
 FSST also supports compressed query processing, since equality between original strings is equivalent to equality between their compressed representations. It may also be possible to perform more complex operations on compressed strings, such as pattern matching, which can reduce the need to decompress strings when processing a wide range of queries.
 
 Symbols have lengths ranging from 1 to 8 bytes, and each symbol is mapped to a code from 0 to 254, with code 255 being reserved as an escape code that plays an important role during decompression. Consequently, the total number of usable symbols is 255. This results in a worst-case symbol table memory overhead of $8 \times 255 + 255$ bytes (symbols and their lengths), which is very unlikely in practice, as the average symbol length is usually close to 2 bytes \cite{fsst}.
-\newline
+\clearpage
 
 \begin{figure}[!htbp]
   \centering
@@ -120,11 +120,6 @@ The construction of the symbol table is the most important component of the FSST
 
 Selecting symbols is challenging because their effectiveness depends on one another whenever they overlap. This is the dependency issue described in the original paper. Therefore, the only reliable way to assess the significance of a symbol is to compress the sample using the current symbol table. However, evaluating all possible symbol tables is not feasible due to the enormous number of possibilities 
 ($\binom{8N}{255}$ where $N$ denotes the sample size in bytes).
-\newline
-
-\sparagraph{The Original Idea's Algorithm.} The FSST algorithm shown in Lst.~\ref{algorithm3} constructs the symbol table by iterating over a sample of the corpus for a fixed number of generations. In each generation, the current table is refined by discovering new symbol combinations and retaining those with the highest static gain. The gain of a symbol is computed as $gain = length \times frequency$, where length is the symbol length (between 1 and 8 bytes) and frequency is the number of times the symbol is selected when compressing the sample using the previous table.
-
-In the original implementation, the number of generations is set to five and the sample size to 16 KB. The sample is processed incrementally, such that in each generation a larger fraction of the sample is considered for symbol selection.
 
 
 \begin{minipage}{\textwidth}
@@ -248,6 +243,10 @@ def makeIndex(st):
 \end{lstlisting}
 \end{minipage}
 \end{minipage}
+
+\sparagraph{The Original Idea's Algorithm.} The FSST algorithm shown in Lst.~\ref{algorithm3} constructs the symbol table by iterating over a sample of the corpus for a fixed number of generations. In each generation, the current table is refined by discovering new symbol combinations and retaining those with the highest static gain. The gain of a symbol is computed as $gain = length \times frequency$, where length is the symbol length (between 1 and 8 bytes) and frequency is the number of times the symbol is selected when compressing the sample using the previous table.
+
+In the original implementation, the number of generations is set to five and the sample size to 16 KB. The sample is processed incrementally, such that in each generation a larger fraction of the sample is considered for symbol selection.
 
 The \texttt{buildSymbolTable} function is the main component of the algorithm, in which the five iterations over the sample are performed. Two counters,  \texttt{count1} and \texttt{count2}, are used to record symbol frequencies when compressing the text using the previous symbol table. The counter \texttt{count1} tracks individual symbols, while \texttt{count2} records the concatenation of two symbols or the concatenation of a symbol and a literal byte.
 
