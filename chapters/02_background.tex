@@ -95,7 +95,7 @@ As the figure shows, each node has a higher key than its children. In this case 
 \end{figure}
 
 The pop operation extracts the element of the root node, which is the element with the highest key. Then the rest of the elements are reordered to maintain the max heap property. This operation has a runtime complexity of $O(\log(n))$, where $n$ is the number of nodes in the heap.  
-
+\clearpage
 \begin{figure}[h]
 \centering
 \begin{tikzpicture}[
@@ -128,7 +128,8 @@ In the context of algorithmic optimization, max heaps are often used to manage c
 \subsection{Trie}
 A trie, also known as a prefix tree, is a tree-based data structure used to store and retrieve strings efficiently by exploiting their shared prefixes. Each node in a trie represents a prefix of one or more strings, and edges correspond to individual characters or bytes. Strings are represented by paths from the root to terminal nodes which can also store other data related to the strings (like mappings).
 
-Tries provide efficient operations for prefix-based queries, insertion, and lookup, all of which can be performed in time proportional to the length of the string rather than the number of stored strings. This makes them particularly suitable for applications involving multiple search operations for strings with commun prefixes.
+Tries provide efficient operations for prefix-based queries, insertion, and lookup, all of which can be performed in time proportional to the length of the string rather than the number of stored strings. This makes them particularly suitable for applications involving multiple search operations for strings with common prefixes.
+\clearpage
 
 
 \begin{figure}[h]

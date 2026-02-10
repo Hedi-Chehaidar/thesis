@@ -6,17 +6,17 @@ Modern analytical database systems process large volumes of string data, where e
 \newline
 
 \noindent
-The original FSST algorithm relies on heuristic, greedy symbol selection, which can lead to suboptimal symbol choices and limit achievable compression factors.
+The original FSST algorithm relies on heuristic, greedy symbol selection and corpus compression, which can lead to suboptimal symbol choices and limit achievable compression factors.
 \newline
 
 \noindent
-This thesis presents several enhancements to the FSST compression method that improve symbol table construction while preserving FSST's core advantages.
+This thesis presents several enhancements to the FSST compression method that improve symbol table construction and full corpus compression while preserving FSST's core advantages.
 The central contribution is a refined symbol selection process that systematically identifies more effective symbols and avoids redundant or conflicting choices.
 \newline
 
 \noindent
-First, a dynamic programming approach is introduced to evaluate and select higher-quality symbols within each generation. Second, an additional frequency counter is incorporated to accelerate the discovery of longer symbols and to explicitly favor them in subsequent generations, improving the exploitation of longer recurring patterns in the data. Third, a symbol pruning mechanism is applied to eliminate conflicting and redundant symbols, ensuring a more compact and effective symbol table.
+First, a dynamic programming approach is introduced to evaluate and select higher-quality symbols within each generation, in addition to improving the corpus compression after the table construction. Second, an additional frequency counter is incorporated to accelerate the discovery of longer symbols and to explicitly favor them in subsequent generations, improving the exploitation of longer recurring patterns in the data. Third, a symbol pruning mechanism is applied to eliminate conflicting and redundant symbols, ensuring a more compact and effective symbol table.
 \newline
 
 \noindent
-Together, these techniques significantly improve the robustness and quality of the symbol table generation process. Experimental evaluation demonstrates that the proposed enhancements lead to consistently improved compression factors with an average of 9.6\% compared to the original FSST algorithm, while maintaining its fast decompression and random-access properties. The results show that careful algorithmic refinement of symbol selection can yield substantial gains without altering the lightweight and practical nature of FSST, making the improved approach well suited for use in modern analytical systems.
+Together, these techniques significantly improve the robustness and quality of the symbol table generation process, as well as enhance the used compression method. Experimental evaluation demonstrates that the proposed contributions lead to consistently improved compression factors with an average of 9.6\% compared to the original FSST algorithm, while maintaining its fast decompression and random-access properties. The results show that careful algorithmic refinement of symbol selection can yield substantial gains without altering the lightweight and practical nature of FSST, making the improved approach well suited for use in modern analytical systems.
