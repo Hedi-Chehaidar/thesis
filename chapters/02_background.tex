@@ -24,7 +24,7 @@ Dynamic programming (DP) addresses optimization problems by systematically explo
 
 Unlike greedy algorithms, dynamic programming evaluates the long-term consequences of decisions. By considering multiple possible choices at each stage and selecting the one that minimizes or maximizes a well-defined cost function, DP can guarantee optimality when the problem satisfies optimal substructure and overlapping subproblems.
 
-%formal definitiotn of knapsack DP 
+%formal definition of knapsack DP 
 \begin{comment}
 We define the 0/1 Knapsack problem formally as follows: there are $n$ items where each item $i$ has value $v_i$ and weight $w_i$ and the knapsack capacity is $W$. We need to choose a subset of items that fits the capacity while maximizing the total value.
 Define the DP table: $dp[i][c] =$ maximum value achievable using the first $i$ items with capacity $c$. So the result is stored in $dp[n][W]$.

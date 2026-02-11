@@ -60,7 +60,7 @@ The two options to choose from are the same as in the previous formula, but cand
 
 Figure~\ref{dp_example} shows an example for compressing a text using the DP formula of Eq.~\eqref{formula2}. \texttt{dp[0]} indicates that we needed 5 bytes to compress the full text given the available symbols. \texttt{opt} contains one best symbol that yields to the best compression of the suffix beginning from the corresponding position. The values for both tables are filled backwards (from right to left) simultaneously according to the used formula. The arrows show the steps to recover the symbols used for compression, needed for counting frequencies in the \texttt{compressCount} function.
 
-The greedy approach of the \texttt{findLongestSymbol} function would need 8 bytes to compress the same text with the same set of symbols. A difference can be seen in the first chosen symbol: \texttt{findLongestSymbol} would choose ``ac'' as the first symbol, which will lead to skipping the next byte as there are no symbols beginning with ``b''. On the other hand, the DP function chooses the symbol ``a'' which is not the longest possible symbol to choose, but it allows for the smallest final compression size.      
+The greedy approach of the \texttt{findLongestSymbol} function would need 8 bytes to compress the same text with the same set of symbols. A difference can be seen in the first chosen symbol: \texttt{findLongestSymbol} would choose ``ac'' as the first symbol, which will lead to escaping the next byte as there are no symbols beginning with ``b''. On the other hand, the DP function chooses the symbol ``a'' which is not the longest possible symbol to choose, but it allows for the smallest final compression size.      
 
 \subsection{Implementation}
 
@@ -91,10 +91,10 @@ for i in reversed(range(n)):
 The code in Lst.~\ref{dp_python} represents the python implementation of the DP function \texttt{st.buildDP} that fills both the DP and the \texttt{opt} tables in a single pass.
 
 As the code shows, the DP table is filled from $n$ to 0 in descending order, where for each position other than $n$ the DP value is initialized with the corresponding value for the option of escaping the current byte. Then the inner loop iterates over the candidate symbols that begin with the current byte and match the next chunk of the text \texttt{data}.
-This code uses the \texttt{st.sIndex} table, whose construction was shown in Lst.~\ref{algorithm3}. As a result, the iteration over the symbols is in decreasing order of their lengths. As a tie-breaker between symbols that yield the same DP value, this implementation chooses a symbol with the highest length (i.e., it occurs first in the iteration), thus the use of ``>'' instead of ``$\ge$'' in the \texttt{if} statement for updating the DP and \texttt{opt} tables (line 15). There is an exception to this case, when choosing to escape the byte also yields the smallest DP value, then no symbol will be chosen.
+This code uses the \texttt{st.sIndex} table, whose construction was shown in Lst.~\ref{algorithm3}. As a result, the iteration over the symbols is in decreasing order of their lengths. As a tie-breaker between symbols that yield the same DP value, this implementation chooses a symbol with the highest length (i.e., it occurs first in the iteration), thus the use of ``>'' instead of ``$\ge$'' in the \texttt{if} statement for updating the DP and \texttt{opt} tables (line 16). There is an exception to this case, when choosing to escape the byte also yields the smallest DP value, then no symbol will be chosen.
 \newline
 
-\sparagraph{Trie Structure.} This approach requires performing a memory comparison of at most 8 bytes for every symbol that begins with a certain byte. To avoid that, a trie is used in the C++ implementation of the contributions \cite{btrfsst_repo} to store the symbols in addition to the \texttt{hashTab} and \texttt{shortCodes} arrays. The trie is implemented as a vector of \texttt{TriNodes}, whose structure is shown in Lst.~\ref{TrieNode}.
+\sparagraph{Trie Data Structure.} The previously shown approach requires performing a memory comparison of at most 8 bytes for every symbol that begins with a certain byte. To avoid that, a trie is used in the C++ implementation of the contributions \cite{btrfsst_repo} to store the symbols in addition to the \texttt{hashTab} and \texttt{shortCodes} arrays. The trie is implemented as a vector of \texttt{TriNodes}, whose structure is shown in Lst.~\ref{TrieNode}.
 
 \begin{lstlisting}[language=C++, caption={Trie node used to store FSST symbols for DP-based lookup.}, label={TrieNode}]
 struct TrieNode {
@@ -131,11 +131,11 @@ for (int off = 0; off < limit; ++off) {
 }
 \end{lstlisting}
 
-This trie traversal from the root implies iterating over the symbols in increasing order of their lengths. Thus the use of ``$\le$'' in the \texttt{if} statement for updating the DP value (line 12), in order to keep the same tie-break logic as in the python implementation. However in this case choosing a symbol will be preferred over escaping the byte, when both options result in the same DP value, which can be helpful in later generations to discover more symbol combinations.
+This trie traversal from the root implies iterating over the symbols in increasing order of their lengths. Thus the use of ``$\le$'' in the \texttt{if} statement for updating the DP value (line 13), in order to keep the same tie-break logic as in the python implementation. However in this case choosing a symbol will be preferred over escaping the byte, when both options result in the same DP value, which can be helpful in later generations to discover more symbol combinations.
 
 A similar traversal is used for adding each symbol into the trie, where instead of breaking when \texttt{node == -1}, a new node is created and the child entry is updated accordingly. Here, breaking is faster in practice than continuing the 8 full iterations without branching, as in most cases no symbols will be found after the second or third iteration, due to the low average length of symbols in the symbol table. 
 
-Having the trie as the structure used for the \texttt{findLongestSymbol} function, there is no need for the \texttt{sIndex} table and therefore the \texttt{makeIndex} function. As a result, including this method in the original C++ implementation of FSST~\cite{fsst_repo}, that already does not use \texttt{makeIndex}, becomes easier.     
+Having the trie as the data structure used for the \texttt{findLongestSymbol} function, there is no need for the \texttt{sIndex} table and therefore the \texttt{makeIndex} function. As a result, including this method in the original C++ implementation of FSST~\cite{fsst_repo}, that already does not use \texttt{makeIndex}, becomes easier.     
 
 After building the DP and \texttt{opt} tables, choosing the next symbol in \texttt{compressCount} or in the compression function can be done by a simple lookup in the \texttt{opt} table. The implementation wraps this operation in a function called \texttt{findBestSymbol}.
 
@@ -150,7 +150,7 @@ Counting triples of symbols will make converging the symbol table faster, and wi
 
 The function \texttt{makeTable} should also consider all possible three-symbol concatenations as potential candidates and push them to the heap, with the gain being calculated as usual. 
 
-Storing \texttt{count3} as a 3-dimensional table, analogous to \texttt{count1} and \texttt{count2}, would be highly inefficient: it would require $512^{3}$ entries and iterating over all three-symbol concatenations will be extremely slow. Noticing that we only need to consider triples having non-zero counts (i.e., they actually appear in the sample compression) makes it possible to store the triples in a hash map. The size of \texttt{count3} will be then linear to the sample size, same as \texttt{count1} and \texttt{count2}.
+Storing \texttt{count3} as a 3-dimensional table, analogous to \texttt{count1} and \texttt{count2}, would be highly inefficient: it would require $512^{3}$ entries and iterating over all three-symbol concatenations will be extremely slow. Noticing that we only need to consider triples having non-zero counts (i.e., they actually appear in the sample compression) makes it possible to store the triples in a hash map. The size of \texttt{count3} will be then linear to the sample size.
 \clearpage
 
 
@@ -199,7 +199,7 @@ Symbol pruning is one step forward to this goal. By partially correcting the cou
 
 \sparagraph{Example without Pruning.} Figure~\ref{no_pruning} shows the symbol selection process without pruning. The previous symbol table used for counting had only three symbols: ``a'', ``b'', and ``c''. The frequencies in the table \texttt{count} of the used symbols for compression and their concatenations, in addition to their corresponding gains (\texttt{frequency} $\times$ \texttt{length}), were all computed by \texttt{compressCount}. We did not include double concatentations (\texttt{count3}) in this example for simplicity.
 
-Assuming that the symbol table has a capacity of 5 symbols, \texttt{maketable} chooses the 5 symbols having the highest static gains, including the one-byte symbols ``a'' and ``b''. Pruning those one-byte symbols and choosing ``ba'' and ``ca'' insetad would result in the best possible next symbol table, which will allow to compress the text in 5 bytes by using all two-byte symbols. Now we explain the reason of this suboptimal symbol selection and the suggested solution for it.
+Assuming that the symbol table has a capacity of 5 symbols, \texttt{maketable} chooses the 5 symbols having the highest static gains, including the one-byte symbols ``a'' and ``b''. Pruning those one-byte symbols and choosing ``ba'' and ``ca'' instead would result in the best possible next symbol table, which will allow to compress the text in 5 bytes by using all two-byte symbols. Now we explain the reason of this suboptimal symbol selection and the suggested solution for it.
 \newline
 
 \sparagraph{Problem.} When choosing a symbol in \texttt{makeTable} that is formed by a concatenation of two or three symbols, we know that we overestimated the counts for the symbols that were used in the concatenation, especially if they are not yet chosen into the symbol table (i.e., they have less gain).
@@ -215,9 +215,9 @@ This reduction happens on the fly when choosing the symbols through the pop oper
 Including concatenations of symbols and raw bytes into the counts, and counting concatenation of symbols that may exceed the maximum symbol length make the simple addition of the count of the intersection symbol not enough to avoid negative counts. Therefore, the implementation deals with negative gains by simply discarding such symbols and not pushing them back to the heap. Empirically, we observed that discarding symbols whose gains become negative does not reduce the compression factor.
 \newline
 
-\sparagraph{Other Pruning Direction.} During symbol selection, if the smaller symbol occures before the bigger symbol that has it as a substring (the smaller symbol has more gain), it will not be pruned. Pruning such symbols proved to be significantly slower. A separate intermediate set has to be maintained for symbols that can be pruned, therefore not pushing them directly to the heap until the whole symbol selection process finishes. When pruned, they have to be removed from the intermediate set and pushed back to the heap.
+\sparagraph{Other Pruning Direction.} During symbol selection, if the smaller symbol occurs before the bigger symbol that has it as a substring (the smaller symbol has more gain), it will not be affected by our pruning mechanism, because it lands in the new symbol table before extracting the bigger symbol from the heap of candidates. Pruning such symbols proved to be significantly slower. A separate intermediate set has to be maintained for symbols that can be pruned. In that case, all symbols extracted from the heap of candidates with valid gains (they were not pruned) would not be pushed directly to the symbol table. Instead they would stay in the intermediate set until the whole symbol selection process finishes. When pruned, they have to be removed from the intermediate set and pushed back to the heap. This way both pruning directions would be guaranteed, having all symbols for the new symbol table in the intermediate set after the selection process ends.
 
-As there was no noticeable benefit from this pruning direction in terms of compression factor, the symbol selection method pushes popped symbols from the max heap, that have not been pruned, directly to the new symbol table. Pruning will consequently only affect symbols with less gain that will occur afterwards in the extraction order.
+As there was no noticeable benefit from this pruning direction in terms of compression factor, the symbol selection method pushes popped symbols from the max heap, that have not been pruned, directly to the new symbol table (initial pruning logic). Pruning will consequently only affect symbols with less gain that will occur afterwards in the extraction order.
 
 \subsection{Implementation}
 
@@ -228,7 +228,7 @@ As there was no noticeable benefit from this pruning direction in terms of compr
     heapq.heappush(heap, (-gain, code1, code2, code3))
 \end{lstlisting}
 
-\sparagraph{Heap Initialization.} As the python implementation in Lst.~\ref{push_cand} shows, the symbol to push is always considered as the concatenation of three symbols and their codes are pushed to the heap along with the gain. Here, the gain is negated because the python \texttt{heapq} module implements a min heap. If the symbol to push is not a concatenation or is a concatenation of two symbols, \texttt{code2} and \texttt{code3} are set to $-1$ denoting their absence. The pruned symbols with non-positive gains are discarded as discussed earlier.
+\sparagraph{Heap Initialization.} As the python implementation in Lst.~\ref{push_cand} shows, the symbol to push is always considered as the concatenation of three symbols and their codes are pushed to the heap along with the gain. Here, the gain is negated because the python \texttt{heapq} module implements a min heap. If the symbol to push is not a concatenation or is a concatenation of two symbols, \texttt{code2} and/or \texttt{code3} are set to $-1$ denoting their absence. The pruned symbols with non-positive gains are discarded as discussed earlier.
 
 The updated \texttt{makeTable} function now constructs the candidates from the \texttt{count1} and \texttt{count2} arrays as usual, but for three-symbol concatenations a loop over the HashMap of \texttt{count3} is added. Then the candidates are pushed with the \texttt{push\_cand} helper function before entering the while loop to choose the symbols of the next symbol table. 
 
