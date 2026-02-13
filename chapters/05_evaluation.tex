@@ -137,12 +137,12 @@ The second and third columns come from the same table ``NextiaJD/Homo\_sapiens.G
 \begin{figure}[!htbp]
   \centering
   \includegraphics[width=1\textwidth]{figures/best\_config}
-  \caption{Compression factor comparison when choosing the best configuration.}
+  \caption{Compression factor improvement against FSST when choosing the best configuration.}
   \label{best_config}
 \end{figure}
 \clearpage
 
-\sparagraph{Best Configuration.} Figure~\ref{best_config} shows the aggregate compression factors for choosing the best configuration for each file independently from the 8 configurations shown in Figure~\ref{cf_combined} (Best).  The average compression factor improved from FSST by 11.1\%, which is not significantly higher than always compressing with BtrFSST, that shows a 9.6\% improvement in the average compression factor. Below are the counts for each configuration, of how many files it had the best compression factor:
+\sparagraph{Best Configuration.} Figure~\ref{best_config} shows the compression factor improvement against FSST when choosing the best configuration for each file independently (Best) from the 7 configurations shown in Figure~\ref{cf_combined} and including FSST itself as an $8^{th}$ configuration. The average compression factor improvement from FSST is at 8.8\%, which is not significantly higher than always compressing with BtrFSST, that shows a 7.3\% average per-file compression factor improvement. Below are the counts for each configuration, of how many files it had the best compression factor:
 
 \begin{itemize}
 
@@ -161,6 +161,13 @@ The distribution proves that BtrFSST is the best configuration, although a notic
 
 \subsection{Block-Based Compressors}
 
+The two Figures~\ref{block_cf}~and~\ref{block_time} show that for the selected datasets, general purpose compressors perform better than both FSST and BtrFSST in terms of compression factor and compression speed. This is due to the high shared substrings between the rows of the datasets, especially prefixes in URLs and identifiers.
+
+LZ4 has a $\times 1.9$ better compression factor and is $\times 6.8$ faster than BtrFSST, while Zstd has a $\times 3.7$ higher compression factor and is $\times 4$ faster than BtrFSST.
+LZ4 is therefore optimized for speed while Zstd gives better compression factors, which supports what was mentioned in Section~\ref{block-based_compressors}.
+
+Although both LZ4 and Zstd are faster and compress better than both BtrFSST and FSST, these block-based compressors stay inefficient for decompressing individual strings, as the whole surrounding block must be first decompressed before accessing a single string.
+
 \begin{figure}[!htbp]
   \centering
   \includegraphics[width=1\textwidth]{figures/block_cf}
@@ -169,18 +176,13 @@ The distribution proves that BtrFSST is the best configuration, although a notic
 \end{figure}
 
 
-The two Figures~\ref{block_cf}~and~\ref{block_time} show that for the selected datasets, general purpose compressors perform better than both FSST and BtrFSST in terms of compression factor and compression speed. This is due to the high shared substrings between the rows of the datasets, especially prefixes in URLs and identifiers.
-
-LZ4 has a $\times 1.9$ better compression factor and is $\times 6.8$ faster than BtrFSST, while Zstd has a $\times 3.7$ higher compression factor and is $\times 4$ faster than BtrFSST.
-LZ4 is therefore optimized for speed while Zstd gives better compression factors, which supports what was mentioned in Section~\ref{block-based_compressors}.
-
-Although both LZ4 and Zstd are faster and compress better than both BtrFSST and FSST, these block-based compressors stay inefficient for decompressing individual strings, as the whole surrounding block must be first decompressed before accessing a single string.
 \begin{figure}[!htbp]
   \centering
   \includegraphics[width=1\textwidth]{figures/block_time}
   \caption{Comparison of compression speed with LZ4 and Zstd.}
   \label{block_time}
 \end{figure}
+\clearpage
 
 \subsection{DICT FSST}
 
@@ -191,10 +193,10 @@ Although both LZ4 and Zstd are faster and compress better than both BtrFSST and 
   \label{cf_dict}
 \end{figure}
 
-Figure~\ref{cf_dict} shows the effect of the contributions on the DICT FSST compression. All columns filtered by the condition on the dictionary encoding size mentioned in Section~\ref{benchmarking_method} are included in this benchmark.
+Figure~\ref{cf_dict} shows the effect of the contributions on the DICT FSST compression. All columns filtered out by the condition on the dictionary encoding size mentioned in Section~\ref{benchmarking_method} are included in this benchmark.
 
 DICT FSST benefited from the duplicate-heavy columns, as it shows a higher average compression factor compared to FSST by $\times 3.6$.
 
-BtrFSST performs better on such columns and shows a higher compression factor improvement against FSST than on the data without duplicate-heavy columns (15.4\% to 9.6\%). But when including dictionary encoding to BtrFSST (DICT BtrFSST), the effects of the contributions are no longer as significant. The small improvement of 1.1\% over DICT FSST is due to the smaller dictionaries in duplicate-heavy data, making the compression mainly influenced by the dictionary encoding phase. 
+BtrFSST performs better on such columns and shows a higher improvement of the average compression factor from FSST than on the data without duplicate-heavy columns (15.4\%). However, the effects of the contributions are no longer as significant with dictionary encoding (DICT BtrFSST). The small improvement (1.1\%) over DICT FSST is due to the smaller dictionaries in duplicate-heavy data, making the compression mainly influenced by the dictionary encoding phase. 
 
 
