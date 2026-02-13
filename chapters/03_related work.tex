@@ -92,7 +92,7 @@ Symbols have lengths ranging from 1 to 8 bytes, and each symbol is mapped to a c
 \begin{figure}[!htbp]
   \centering
   \includegraphics[width=0.8\textwidth]{figures/fsst_example}
-  \caption{FSST compression example \cite{fsst}}
+  \caption{FSST compression example \cite{fsst}.}
   \label{fsst_example}
 \end{figure}
 
@@ -124,9 +124,7 @@ Selecting symbols is challenging because their effectiveness depends on one anot
 
 
 \begin{minipage}{\textwidth}
-  \captionsetup{type=lstlisting}
-  \captionof{lstlisting}{FSST symbol table construction \cite{fsst}.}
-  \label{algorithm3}
+  
 
   \vspace{4pt}
 \noindent
@@ -243,6 +241,9 @@ def makeIndex(st):
   
 \end{lstlisting}
 \end{minipage}
+  \captionsetup{type=lstlisting}
+  \captionof{lstlisting}{FSST symbol table construction \cite{fsst}.}
+  \label{algorithm3}
 \end{minipage}
 
 \sparagraph{The Original Idea's Algorithm.} The FSST algorithm shown in Lst.~\ref{algorithm3} constructs the symbol table by iterating over a sample of the corpus for a fixed number of generations. In each generation, the current table is refined by discovering new symbol combinations and retaining those with the highest static gain. The gain of a symbol is computed as $gain = length \times frequency$, where length is the symbol length (between 1 and 8 bytes) and frequency is the number of times the symbol is selected when compressing the sample using the previous table.
@@ -268,7 +269,19 @@ Symbol codes are now stored in two separate data structures: a $256 \times 256$ 
 For each character $A$ for which no entry in \texttt{shortCodes[A][*]} is defined, the corresponding single-byte symbol is inserted if it exists. This guarantees that an access to \texttt{shortCodes} always returns the longest matching symbol of length one or two. The \texttt{findLongestSymbol} function first queries the \texttt{hashTab} to search for a matching symbol, then consults \texttt{shortCodes} if no match is found, and finally falls back to returning the literal byte. The function's return value is computed using a conditional move (MOV) instruction, thereby avoiding branching.
 \newline
 
-\sparagraph{Limitation.} Although the original FSST algorithm is highly optimized for runtime, particularly when using the SIMD variant, the greedy strategy employed by the \texttt{findLongestSymbol} function does not always select the optimal symbol, both during compression and during symbol table construction. This leaves room for improving the compression factor by adopting a different optimization strategy that more carefully considers conflicts between overlapping symbols, as discussed in the following section.
+\sparagraph{Limitation.} Although the original FSST algorithm is highly optimized for runtime, particularly when using the SIMD variant, the greedy strategy employed by the \texttt{findLongestSymbol} function does not always select the optimal symbol, both during compression and during symbol table construction. This leaves room for improving the compression factor by adopting a different optimization strategy that more carefully considers conflicts between overlapping symbols.
+
+\subsection{FSST+}
+
+FSST+~\cite{fsstplus} is a recent extension of the FSST algorithm, where common prefixes from consecutive rows are extracted and compressed independantly from the rest of the strings. 
+
+Rows are grouped in fixed-size blocks (usually of 128 strings), where they are next sorted lexicographically to obtain longer shared prefixes. Dynamic programming is afterwards used to choose the optimal partitioning of the strings of each block into similarity chuncks, where a single prefix is determined for each chunck. Each row of the chunck is assigned a jump-back offset pointing to the used prefix, while also storing the prefix length. 
+
+FSST+ exploits prefix redundancies and achieves significantly higher compression factors than FSST, especially in prefix-rich data, while keeping a linear runtime to the corpus size.  
+
+Extracted prefixes and the rest of the strings are compressed using the original FSST. Therefore, the contributions of this thesis can optimize further the compression factors, as they improve the FSST algorithm itself. 
+
+
 
 \begin{comment}
 Citation test~\parencite{latex}.
